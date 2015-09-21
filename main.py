@@ -58,9 +58,10 @@ class register():
 
 
 class instr():
-    def __init__(self, text, oplen):
+    def __init__(self, text, oplen, function):
         self.text = text
         self.oplen = oplen
+        self.function = function
 
 
 
@@ -215,35 +216,12 @@ class emulator():
         
         print "operand: " + hex(operand)
         
+        # inc pc
         self.pc.set(self.pc.get()+instrlength+1)
         
-        #
-        # Instruction Switch
-        #
-        
-        if instruction == 0x0:
-            #nop
-            pass
-        elif instruction == 0xc3:
-            #jp nn
-            self.pc.set(operand)
-            print "new pc : " + hex(operand)
-        elif instruction == 0xaf:
-            # xor n
-            self.af.sethigh(self.af.gethigh() ^ self.af.gethigh())
-            if self.af.gethigh() == 0:
-                self.zero = True
-            else:
-                self.zero = False
-            self.carry = False
-            self.halfcarry = False
-            self.substract = False
-            
-        else:
-            print "Undefined instruction: " + hex(instruction)
-            self.running = False
-            return
-        
+        # execute instruction
+        self.instrdict[instruction].function(self, operand)
+                
         print "-------------"
         print "CURRENT REGISTERS"
         print "AF: 0x" + format(self.af.get(), '04x') + "  BC: 0x" + format(self.bc.get(), '04x')
@@ -252,15 +230,71 @@ class emulator():
         print "-------------"
         
     def initinstrdict(self):
-        self.instrdict[0x0]  = instr("nop",0)
-        self.instrdict[0xc3] = instr("jp nn", 2)
-        self.instrdict[0xaf] = instr("xor n", 0) 
+        self.instrdict[0x0]  = instr("nop",0,instrimpl.nop)
+        self.instrdict[0xc3] = instr("jp nn", 2,instrimpl.jpnn)
+        self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora)
+        self.instrdict[0x21] = instr("ld hl,nn", 2,instrimpl.ldhlnn) 
+                
+        # ld nn,n
+        self.instrdict[0x06] = instr("ld B,n", 1,instrimpl.ldbn)
+        self.instrdict[0x0e] = instr("ld C,n", 1,instrimpl.ldcn)
+        self.instrdict[0x16] = instr("ld D,n", 1,instrimpl.lddn)
+        self.instrdict[0x1e] = instr("ld E,n", 1,instrimpl.lden)
+        self.instrdict[0x26] = instr("ld H,n", 1,instrimpl.ldhn)
+        self.instrdict[0x2e] = instr("ld L,n", 1,instrimpl.ldln)
         
         
         
+class instrimpl():
+    @staticmethod
+    def nop(emu, op):
+        pass
+    
+    @staticmethod
+    def jpnn(emu, op):
+        emu.pc.set(op)
+    
+    @staticmethod
+    def xora(emu, op):
+        emu.af.sethigh(emu.af.gethigh() ^ emu.af.gethigh())
         
+        if emu.af.gethigh() == 0:
+            emu.zero = True
+        else:
+            emu.zero = False
+        emu.carry = False
+        emu.halfcarry = False
+        emu.substract = False
+    
+    @staticmethod
+    def ldhlnn(emu, op):
+        emu.hl.set(op)
+    
+    @staticmethod
+    def ldbn(emu, op):
+        emu.bc.sethigh(op)
+    
+    @staticmethod
+    def ldcn(emu, op):
+        emu.bc.setlow(op)
         
+    @staticmethod
+    def lddn(emu, op):
+        emu.de.sethigh(op)
         
+    @staticmethod
+    def lden(emu, op):
+        emu.de.setlow(op)
+        
+    @staticmethod
+    def ldhn(emu, op):
+        emu.hl.sethigh(op)
+        
+    @staticmethod
+    def ldln(emu, op):
+        emu.hl.setlow(op)
+        
+    
         
         
         
