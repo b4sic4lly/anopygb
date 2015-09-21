@@ -38,13 +38,15 @@ class register():
     
     def setlow(self, value):
         if value < 0x0 or value > 2**(self.size/2):
-            print "[ERROR] Cannot write value %d. Value too big" % value
+            print "[ERROR] Cannot write value %d to register. Value too big" % value
+            return
     
         self.value = (self.value & 0xFF00) | value 
     
     def sethigh(self, value):
         if value < 0x0 or value > 2**(self.size/2):
-            print "[ERROR] Cannot write value %d. Value too big" % value
+            print "[ERROR] Cannot write value %d to register. Value too big" % value
+            return
     
         self.value = (self.value & 0x00FF) | (value<<8) 
     
@@ -160,7 +162,7 @@ class emulator():
             return
         
         if value < 0x0 or value > 0xff:
-            print "[ERROR] Cannot write value %d. Value too big" % (value)
+            print "[ERROR] Cannot write value %d at %s. Value too big" % (value, hex(pos))
             return 
         
         self.mem[pos] = value
@@ -214,6 +216,7 @@ class emulator():
         elif instrlength == 2:
             operand = self.read2bytes(self.pc.get() + 1) 
         
+        print "instruction: " + self.instrdict[instruction].text
         print "operand: " + hex(operand)
         
         # inc pc
@@ -242,6 +245,25 @@ class emulator():
         self.instrdict[0x1e] = instr("ld E,n", 1,instrimpl.lden)
         self.instrdict[0x26] = instr("ld H,n", 1,instrimpl.ldhn)
         self.instrdict[0x2e] = instr("ld L,n", 1,instrimpl.ldln)
+        
+        # ld (hld),a
+        self.instrdict[0x32] = instr("ld (hld),a", 0,instrimpl.ldhlda)
+        
+        # dec n
+        self.instrdict[0x3d] = instr("dec a", 0,instrimpl.deca)
+        self.instrdict[0x05] = instr("dec b", 0,instrimpl.decb)
+        self.instrdict[0x0d] = instr("dec c", 0,instrimpl.decc)
+        self.instrdict[0x15] = instr("dec d", 0,instrimpl.decd)
+        self.instrdict[0x1d] = instr("dec e", 0,instrimpl.dece)
+        self.instrdict[0x25] = instr("dec h", 0,instrimpl.dech)
+        self.instrdict[0x2d] = instr("dec l", 0,instrimpl.decl)
+        self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.dechl)
+        
+        # jr cc,n
+        #self.instrdict[0x20] = instr("jr nz,n", 0,instrimpl.jrnzn)
+        #self.instrdict[0x28] = instr("jr z,n",  0,instrimpl.jrzn)
+        #self.instrdict[0x30] = instr("jr nc,n", 0,instrimpl.jrncn)
+        #self.instrdict[0x38] = instr("jr c,n",  0,instrimpl.jrcn)
         
         
         
@@ -294,12 +316,61 @@ class instrimpl():
     def ldln(emu, op):
         emu.hl.setlow(op)
         
+    @staticmethod
+    def ldhlda(emu, op):
+        emu.writebyte(emu.hl.get(), emu.af.gethigh())
+        emu.hl.set(emu.hl.get()-1)
+        
+        
+    @staticmethod 
+    def dec(emu, value):
+        result = (value - 1) % 256
+        if result == 0:
+            emu.zero = True
+        else:
+            emu.zero = False
+        
+        emu.substract = True
+        if (value & 0x0f) == 0x0f:
+            emu.halfcarry = True
+        else:
+            emu.halfcarry = False
+            
+        return result
     
+    @staticmethod
+    def deca(emu, op):
+        emu.af.sethigh(instrimpl.dec(emu, emu.af.gethigh()))
         
+    
+    @staticmethod
+    def decb(emu, op):
+        emu.bc.sethigh(instrimpl.dec(emu, emu.bc.gethigh()))
         
+    @staticmethod
+    def decc(emu, op):
+        emu.bc.setlow(instrimpl.dec(emu, emu.bc.getlow()))
         
+    @staticmethod
+    def decd(emu, op):
+        emu.de.sethigh(instrimpl.dec(emu, emu.de.gethigh()))
         
+    @staticmethod
+    def dece(emu, op):
+        emu.de.setlow(instrimpl.dec(emu, emu.de.getlow()))
         
+    @staticmethod
+    def dech(emu, op):
+        emu.hl.sethigh(instrimpl.dec(emu, emu.hl.gethigh()))
+        
+    @staticmethod
+    def decl(emu, op):
+        emu.hl.setlow(instrimpl.dec(emu, emu.hl.getlow())) 
+        
+    @staticmethod
+    def dechl(emu, op):
+        # are you sure?
+        emu.writebyte(instrimpl.dec(emu, emu.readbyte(emu.hl.get())))
         
         
         
