@@ -3,6 +3,7 @@ Created on Sep 21, 2015
 
 @author: mft
 '''
+import sys
 from debug import *
 from bitarray import bitarray
 
@@ -196,12 +197,13 @@ class emulator():
 
     def start(self):
         self.running = True
+        raw_input("[Press key to start emulation]")
         while self.running == True:
             self.cpunext()
-            #raw_input("Wait for key..")
+            
             
         print "Emulation finished"
-        print "Loaded %d instructions" % len(self.instrdict)
+        
 
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
@@ -290,17 +292,109 @@ class emulator():
         self.instrdict[0xf3] = instr("di", 0,instrimpl.di, 4)
         self.instrdict[0xfb] = instr("ei", 0,instrimpl.ei, 4)
         
+        # ldhna
+        self.instrdict[0xe0] = instr("ld ($FF00+%d),a", 1, instrimpl.ldhna, 12)
+        self.instrdict[0xf0] = instr("ld a,($FF00+%d)", 1, instrimpl.ldhan, 12)
         
-        
-        print "Loaded %d instructions" % len(self.instrdict)
+        # cp n
+        self.instrdict[0xbf] = instr("cp a", 0, instrimpl.cpa, 4)
+        self.instrdict[0xb8] = instr("cp b", 0, instrimpl.cpb, 4)
+        self.instrdict[0xb9] = instr("cp c", 0, instrimpl.cpc, 4)
+        self.instrdict[0xba] = instr("cp d", 0, instrimpl.cpd, 4)
+        self.instrdict[0xbb] = instr("cp e", 0, instrimpl.cpe, 4)
+        self.instrdict[0xbc] = instr("cp h", 0, instrimpl.cph, 4)
+        self.instrdict[0xbd] = instr("cp l", 0, instrimpl.cpl, 4)
+        self.instrdict[0xbe] = instr("cp (hl)", 0, instrimpl.cphl, 8)
+        self.instrdict[0xfe] = instr("cp n", 1, instrimpl.cpn, 8)
+                
+        print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 class instrimpl():
+    
+    @staticmethod
+    def cp(emu, value):
+        result = emu.af.gethigh() - value
+        if result == 0:
+            emu.zero = True
+        else:
+            emu.zero = False
+        
+        emu.substract = True
+        
+        if (value & 0x0f) > (emu.af.gethigh() & 0x0f):
+            emu.halfcarry = True
+        else:
+            emu.halfcarry = False
+        
+        # carry
+        if emu.af.gethigh() < value:
+            emu.carry = True
+        else:
+            emu.carry = False
+            
+    
+    @staticmethod
+    def cpa(emu, op):
+        instrimpl.cp(emu, emu.af.gethigh())
+    
+    @staticmethod
+    def cpb(emu, op):
+        instrimpl.cp(emu, emu.bc.gethigh())
+    
+    @staticmethod
+    def cpc(emu, op):
+        instrimpl.cp(emu, emu.bc.getlow())
+    
+    @staticmethod
+    def cpd(emu, op):
+        instrimpl.cp(emu, emu.de.gethigh())
+    
+    @staticmethod
+    def cpe(emu, op):
+        instrimpl.cp(emu, emu.de.getlow())
+    
+    @staticmethod
+    def cph(emu, op):
+        instrimpl.cp(emu, emu.hl.gethigh())
+    
+    @staticmethod
+    def cpl(emu, op):
+        instrimpl.cp(emu, emu.hl.getlow())
+    
+    @staticmethod
+    def cphl(emu, op):
+        instrimpl.cp(emu, emu.readbyte(emu.hl.get()))
+        
+    @staticmethod
+    def cpn(emu, op):
+        instrimpl.cp(emu, op)
+    
+    
+    
+    
+    
+    
+    @staticmethod
+    def ldhan(emu, op):
+        print "memory at 0xff00+op is %d" % emu.readbyte(0xff00+op)
+        emu.af.sethigh(emu.readbyte(0xff00+op))
+    
+    @staticmethod
+    def ldhna(emu, op):
+        emu.writebyte(0xff00+op, emu.af.gethigh())
+    
+    
     @staticmethod
     def tosignedint(byte):
         if byte > 127:
             return (256-byte) * (-1)
         else:
             return byte
+    
+    @staticmethod
+    def stub(emu, op):
+        print "This instruction is not implemented"
+        emu.running = False
     
     @staticmethod
     def nop(emu, op):
