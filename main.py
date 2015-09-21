@@ -60,10 +60,11 @@ class register():
 
 
 class instr():
-    def __init__(self, text, oplen, function):
+    def __init__(self, text, oplen, function, ticks):
         self.text = text
         self.oplen = oplen
         self.function = function
+        self.ticks = ticks
 
 
 
@@ -78,6 +79,8 @@ class emulator():
         self.mem = bytearray(65536)
         
         self.running = False
+        
+        
         
         # copy cartridge to memory
         self.mem[0x0:0x8000] = self.loadrom(filename)
@@ -101,6 +104,8 @@ class emulator():
         self.substract = False
         self.halfcarry = False
         self.carry = False
+        
+        self.interruptsflag = False
         
         #self.flag = register(0, 16)
         
@@ -193,8 +198,10 @@ class emulator():
         self.running = True
         while self.running == True:
             self.cpunext()
+            #raw_input("Wait for key..")
             
         print "Emulation finished"
+        print "Loaded %d instructions" % len(self.instrdict)
 
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
@@ -233,41 +240,68 @@ class emulator():
         print "-------------"
         
     def initinstrdict(self):
-        self.instrdict[0x0]  = instr("nop",0,instrimpl.nop)
-        self.instrdict[0xc3] = instr("jp nn", 2,instrimpl.jpnn)
-        self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora)
-        self.instrdict[0x21] = instr("ld hl,nn", 2,instrimpl.ldhlnn) 
+        self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
+        self.instrdict[0xc3] = instr("jp nn", 2,instrimpl.jpnn, 12)
+        self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
+        self.instrdict[0x21] = instr("ld hl,nn", 2,instrimpl.ldhlnn, 12) 
                 
         # ld nn,n
-        self.instrdict[0x06] = instr("ld B,n", 1,instrimpl.ldbn)
-        self.instrdict[0x0e] = instr("ld C,n", 1,instrimpl.ldcn)
-        self.instrdict[0x16] = instr("ld D,n", 1,instrimpl.lddn)
-        self.instrdict[0x1e] = instr("ld E,n", 1,instrimpl.lden)
-        self.instrdict[0x26] = instr("ld H,n", 1,instrimpl.ldhn)
-        self.instrdict[0x2e] = instr("ld L,n", 1,instrimpl.ldln)
+        self.instrdict[0x06] = instr("ld B,n", 1,instrimpl.ldbn, 8)
+        self.instrdict[0x0e] = instr("ld C,n", 1,instrimpl.ldcn, 8)
+        self.instrdict[0x16] = instr("ld D,n", 1,instrimpl.lddn, 8)
+        self.instrdict[0x1e] = instr("ld E,n", 1,instrimpl.lden, 8)
+        self.instrdict[0x26] = instr("ld H,n", 1,instrimpl.ldhn, 8)
+        self.instrdict[0x2e] = instr("ld L,n", 1,instrimpl.ldln, 8)
         
         # ld (hld),a
-        self.instrdict[0x32] = instr("ld (hld),a", 0,instrimpl.ldhlda)
+        self.instrdict[0x32] = instr("ld (hld),a", 0,instrimpl.ldhlda, 8)
         
         # dec n
-        self.instrdict[0x3d] = instr("dec a", 0,instrimpl.deca)
-        self.instrdict[0x05] = instr("dec b", 0,instrimpl.decb)
-        self.instrdict[0x0d] = instr("dec c", 0,instrimpl.decc)
-        self.instrdict[0x15] = instr("dec d", 0,instrimpl.decd)
-        self.instrdict[0x1d] = instr("dec e", 0,instrimpl.dece)
-        self.instrdict[0x25] = instr("dec h", 0,instrimpl.dech)
-        self.instrdict[0x2d] = instr("dec l", 0,instrimpl.decl)
-        self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.dechl)
+        self.instrdict[0x3d] = instr("dec a", 0,instrimpl.deca, 4)
+        self.instrdict[0x05] = instr("dec b", 0,instrimpl.decb, 4)
+        self.instrdict[0x0d] = instr("dec c", 0,instrimpl.decc, 4)
+        self.instrdict[0x15] = instr("dec d", 0,instrimpl.decd, 4)
+        self.instrdict[0x1d] = instr("dec e", 0,instrimpl.dece, 4)
+        self.instrdict[0x25] = instr("dec h", 0,instrimpl.dech, 4)
+        self.instrdict[0x2d] = instr("dec l", 0,instrimpl.decl, 4)
+        self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.dechl, 12)
         
         # jr cc,n
-        #self.instrdict[0x20] = instr("jr nz,n", 0,instrimpl.jrnzn)
-        #self.instrdict[0x28] = instr("jr z,n",  0,instrimpl.jrzn)
-        #self.instrdict[0x30] = instr("jr nc,n", 0,instrimpl.jrncn)
-        #self.instrdict[0x38] = instr("jr c,n",  0,instrimpl.jrcn)
+        self.instrdict[0x20] = instr("jr nz,n", 1,instrimpl.jrnzn, 8)
+        self.instrdict[0x28] = instr("jr z,n",  0,instrimpl.jrzn, 8)
+        self.instrdict[0x30] = instr("jr nc,n", 0,instrimpl.jrncn, 8)
+        self.instrdict[0x38] = instr("jr c,n",  0,instrimpl.jrcn, 8)
+        
+        #ld a,n
+        self.instrdict[0x7f] = instr("ld A,A", 0,instrimpl.ldaa, 4)
+        self.instrdict[0x78] = instr("ld A,b", 0,instrimpl.ldab, 4)
+        self.instrdict[0x79] = instr("ld A,c", 0,instrimpl.ldac, 4)
+        self.instrdict[0x7a] = instr("ld A,d", 0,instrimpl.ldad, 4)
+        self.instrdict[0x7b] = instr("ld A,e", 0,instrimpl.ldae, 4)
+        self.instrdict[0x7c] = instr("ld A,h", 0,instrimpl.ldah, 4)
+        self.instrdict[0x7d] = instr("ld A,l", 0,instrimpl.ldal, 4)
+        self.instrdict[0x0a] = instr("ld A,(bc)", 0,instrimpl.ldabc, 8)
+        self.instrdict[0x1a] = instr("ld A,(de)", 0,instrimpl.ldade, 8)
+        self.instrdict[0x7e] = instr("ld A,(hl)", 0,instrimpl.ldahl, 8)
+        self.instrdict[0xfa] = instr("ld A,(nn)", 2,instrimpl.ldann, 16)
+        self.instrdict[0x3e] = instr("ld A,n", 1,instrimpl.ldan, 8)
+        
+        # interrupts di, ei
+        self.instrdict[0xf3] = instr("di", 0,instrimpl.di, 4)
+        self.instrdict[0xfb] = instr("ei", 0,instrimpl.ei, 4)
         
         
+        
+        print "Loaded %d instructions" % len(self.instrdict)
         
 class instrimpl():
+    @staticmethod
+    def tosignedint(byte):
+        if byte > 127:
+            return (256-byte) * (-1)
+        else:
+            return byte
+    
     @staticmethod
     def nop(emu, op):
         pass
@@ -372,18 +406,98 @@ class instrimpl():
         # are you sure?
         emu.writebyte(instrimpl.dec(emu, emu.readbyte(emu.hl.get())))
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    @staticmethod
+    def jrnzn(emu, op):
+        if emu.zero == False:
+            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
+            
+    @staticmethod
+    def jrzn(emu, op):
+        if emu.zero == True:
+            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
+            
+    @staticmethod
+    def jrncn(emu, op):
+        if emu.carry == False:
+            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
+            
+    @staticmethod
+    def jrcn(emu, op):
+        if emu.carry == True:
+            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))      
+    
+    @staticmethod
+    def ldaa(emu, op):
+        emu.af.sethigh(emu.af.gethigh())    
+    
+    @staticmethod
+    def ldab(emu, op):
+        emu.af.sethigh(emu.bc.gethigh())    
+    
+    @staticmethod
+    def ldac(emu, op):
+        emu.af.sethigh(emu.bc.getlow())    
+    
+    @staticmethod
+    def ldad(emu, op):
+        emu.af.sethigh(emu.de.gethigh())    
+    
+    @staticmethod
+    def ldae(emu, op):
+        emu.af.sethigh(emu.de.getlow())    
+    
+    @staticmethod
+    def ldah(emu, op):
+        emu.af.sethigh(emu.hl.gethigh())    
+    
+    @staticmethod
+    def ldal(emu, op):
+        emu.af.sethigh(emu.hl.getlow())    
+    
+    @staticmethod
+    def ldabc(emu, op):
+        emu.af.sethigh(emu.readbyte(emu.bc.get()))    
+    
+    @staticmethod
+    def ldade(emu, op):
+        emu.af.sethigh(emu.readbyte(emu.de.get()))    
+    
+    @staticmethod
+    def ldahl(emu, op):
+        emu.af.sethigh(emu.hl.get())    
+    
+    @staticmethod
+    def ldann(emu, op):
+        emu.af.sethigh(emu.readbyte(op))    
+    
+    @staticmethod
+    def ldan(emu, op):
+        emu.af.sethigh(op)    
+    
+    @staticmethod
+    def di(emu, op):
+        # TODO: this is not correct they are disabled after the next instruction 
+        emu.interruptsflag = False
+    
+    @staticmethod
+    def ei(emu, op):
+        # TODO: this is not correct they are enabled after the next instruction
+        emu.interruptsflag = True
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
+        
+        
 emu = emulator("tetris.gb")
 
 
