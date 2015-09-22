@@ -133,15 +133,6 @@ class instrimpl():
         emu.writebyte(op, emu.af.gethigh())
         
     
-        
-        
-    
-    
-    
-    
-     
-    
-    
     @staticmethod
     def ldhan(emu, op):
         emu.af.sethigh(emu.readbyte(0xff00+op))
@@ -186,6 +177,19 @@ class instrimpl():
     @staticmethod
     def ldhlnn(emu, op):
         emu.hl.set(op)
+    
+    @staticmethod
+    def ldbcnn(emu, op):
+        emu.bc.set(op)
+        
+    @staticmethod
+    def lddenn(emu, op):
+        emu.de.set(op)
+        
+    @staticmethod
+    def ldspnn(emu, op):
+        emu.sp.set(op)
+    
     
     @staticmethod
     def ldbn(emu, op):
@@ -263,10 +267,27 @@ class instrimpl():
         emu.hl.setlow(instrimpl.dec(emu, emu.hl.getlow())) 
         
     @staticmethod
-    def dechl(emu, op):
+    def decmhl(emu, op):
         # are you sure?
         emu.writebyte(instrimpl.dec(emu, emu.readbyte(emu.hl.get())))
+    
+    @staticmethod
+    def decbc(emu, op):
+        emu.bc.set(instrimpl.dec(emu, emu.bc.get())) 
+    
+    @staticmethod
+    def decde(emu, op):
+        emu.de.set(instrimpl.dec(emu, emu.de.get()))
         
+    @staticmethod
+    def dechl(emu, op):
+        emu.hl.set(instrimpl.dec(emu, emu.hl.get()))
+        
+    @staticmethod
+    def decsp(emu, op):
+        emu.sp.set(instrimpl.dec(emu, emu.sp.get()))
+    
+    
     @staticmethod
     def jrnzn(emu, op):
         if emu.zero == False:
@@ -325,7 +346,7 @@ class instrimpl():
     
     @staticmethod
     def ldahl(emu, op):
-        emu.af.sethigh(emu.hl.get())    
+        emu.af.sethigh(emu.readbyte(emu.hl.get()))   
     
     @staticmethod
     def ldann(emu, op):
@@ -344,4 +365,69 @@ class instrimpl():
     def ei(emu, op):
         # TODO: this is not correct they are enabled after the next instruction
         emu.interruptmasterenable = True
+        
+    @staticmethod
+    def ldff00ca(emu, op):
+        emu.writebyte(0xff00+emu.bc.getlow(), emu.af.gethigh())
+        
+    @staticmethod
+    def inca(emu, op):
+        emu.af.sethigh(instrimpl.inc(emu, emu.af.gethigh()))
+    
+    @staticmethod
+    def incb(emu, op):
+        emu.bc.sethigh(instrimpl.inc(emu, emu.bc.gethigh()))
+        
+    @staticmethod
+    def incc(emu, op):
+        emu.bc.setlow(instrimpl.inc(emu, emu.bc.getlow()))
+        
+    @staticmethod
+    def incd(emu, op):
+        emu.de.sethigh(instrimpl.inc(emu, emu.de.gethigh()))
+        
+    @staticmethod
+    def ince(emu, op):
+        emu.de.setlow(instrimpl.inc(emu, emu.de.getlow()))
+        
+    @staticmethod
+    def inch(emu, op):
+        emu.hl.sethigh(instrimpl.inc(emu, emu.hl.gethigh()))
+        
+    @staticmethod
+    def incl(emu, op):
+        emu.hl.sethigh(instrimpl.inc(emu, emu.hl.gethigh()))
+        
+    @staticmethod
+    def inchl(emu, op):
+        emu.writebyte(emu.hl.get(), instrimpl.inc(emu, emu.readbyte(emu.hl.get())) )
+    
+    @staticmethod 
+    def inc(emu, value):
+        result = (value + 1) % 256
+        if result == 0:
+            emu.zero = True
+        else:
+            emu.zero = False
+        
+        emu.substract = False
+        
+        if (value & 0x0f) == 0x0f:
+            emu.halfcarry = True
+        else:
+            emu.halfcarry = False
+            
+        return result    
+        
+    @staticmethod
+    def call(emu, op):
+        emu.push2bytestack(emu.pc.get())
+        emu.pc.set(op)
+            
+    
+        
+        
+        
+        
+        
     

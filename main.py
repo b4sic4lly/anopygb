@@ -6,6 +6,7 @@ Created on Sep 21, 2015
 
 from debug import *
 from cpu import instrimpl 
+import timeit
 
 print "Starting AnoPyGB..."
 
@@ -100,9 +101,16 @@ class emulator():
         self.instrdict = {}
         self.initinstrdict()
         
+        #t = timeit.Timer(self.doall)
+        #print t.timeit(number=500)
         self.reset()    
         self.start()
         
+    def doall(self):
+        self.reset()
+        self.start()
+    
+    
     def reset(self):
         # registers
         self.af = register(0x01b0, 16)
@@ -166,8 +174,16 @@ class emulator():
             print "[ERROR] Cannot push byte %d. Value too big" % byte
             return
         
-        self.sp.set(self.sp.get() - 2)
+        self.sp.set(self.sp.get() - 1)
         self.writebyte(self.sp.get(), byte)
+        
+    def push2bytestack(self, bytes):
+        if bytes < 0x0 or bytes > 0xffff:
+            print "[ERROR] Cannot push byte %d. Value too big" % bytes
+            return
+        
+        self.sp.set(self.sp.get() - 2)
+        self.write2bytes(self.sp.get(), bytes)
     
     def readbyte(self, pos):
         if pos < 0x0 or pos > 0xffff:
@@ -185,6 +201,21 @@ class emulator():
         op2 = self.mem[pos]
         
         return (op1<<8) | op2
+
+    def write2bytes(self, pos, value):
+        if pos < 0x0 or pos > 0xfffe:
+            print "[ERROR] Cannot access memory location at " + hex(pos)
+            return 0
+        
+        if value < 0 or value > 0xffff:
+            print "[ERROR] Cannot write byte %x at %x. Value too big" % (bytes, pos)
+            return 0
+        
+        self.mem[pos] = (value & 0x00ff)
+        self.mem[pos+1] = ((value &0xff00)>>8)
+        
+        
+        
 
     def writebyte(self, pos, value):
         if pos < 0x0 or pos > 0xffff:
@@ -222,13 +253,16 @@ class emulator():
     def start(self):
         self.running = True
                 
-        raw_input("[Press key to start emulation]")
+        #raw_input("[Press key to start emulation]")
+        
         while self.running == True:
             self.cpunext()
             self.gpunext()
             self.intnext()
-            
+        
+        
         print "Emulation finished"
+        print "Loaded %d of 244 instructions" % len(self.instrdict)
     
     
     def intnext(self):
@@ -275,9 +309,6 @@ class emulator():
     def gpunext(self):
         self.gputicks += self.ticks - self.lastticks
         self.lastticks = self.ticks
-
-        
-
 
         if self.gpumode == self.GPU_HBLANK:
 
@@ -360,7 +391,7 @@ class emulator():
         self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
         self.instrdict[0xc3] = instr("jp %04x", 2,instrimpl.jpnn, 12)
         self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
-        self.instrdict[0x21] = instr("ld hl,%04x", 2,instrimpl.ldhlnn, 12) 
+        
                 
         # ld nn,n
         self.instrdict[0x06] = instr("ld B,%02x", 1,instrimpl.ldbn, 8)
@@ -381,9 +412,13 @@ class emulator():
         self.instrdict[0x1d] = instr("dec e", 0,instrimpl.dece, 4)
         self.instrdict[0x25] = instr("dec h", 0,instrimpl.dech, 4)
         self.instrdict[0x2d] = instr("dec l", 0,instrimpl.decl, 4)
-        self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.dechl, 12)
-        
-        # jr cc,n
+        self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.decmhl, 12)
+        self.instrdict[0x0b] = instr("dec bc", 0,instrimpl.decbc, 4)
+        self.instrdict[0x1b] = instr("dec de", 0,instrimpl.decde, 4)
+        self.instrdict[0x2b] = instr("dec hl", 0,instrimpl.dechl, 4)
+        self.instrdict[0x3b] = instr("dec sp", 0,instrimpl.decsp, 4)
+         
+        # jr cc,n 
         self.instrdict[0x20] = instr("jr nz,%02x", 1,instrimpl.jrnzn, 8)
         self.instrdict[0x28] = instr("jr z,%02x",  1,instrimpl.jrzn, 8)
         self.instrdict[0x30] = instr("jr nc,%02x", 1,instrimpl.jrncn, 8)
@@ -443,7 +478,31 @@ class emulator():
         self.instrdict[0x77] = instr("ld (hl),a", 0, instrimpl.ldhla, 8)
         self.instrdict[0xea] = instr("ld (%04x),a", 2, instrimpl.ldnna, 16)
         
-             
+        # ld **,nn
+        self.instrdict[0x01] = instr("ld bc,%04x", 2,instrimpl.ldbcnn, 12)
+        self.instrdict[0x11] = instr("ld de,%04x", 2,instrimpl.lddenn, 12)
+        self.instrdict[0x21] = instr("ld hl,%04x", 2,instrimpl.ldhlnn, 12) 
+        self.instrdict[0x31] = instr("ld sp,%04x", 2,instrimpl.ldspnn, 12)
+        
+        # ld a,(hl)
+        self.instrdict[0x2a] = instr("ld a,(hl)", 0,instrimpl.ldahl, 8)
+        
+        # ld (c),a
+        self.instrdict[0xe2] = instr("ld ($FF00+c),a", 0,instrimpl.ldff00ca, 8)
+        
+        # inc
+        self.instrdict[0x3c] = instr("inc a", 0,instrimpl.inca, 4)
+        self.instrdict[0x04] = instr("inc b", 0,instrimpl.incb, 4)
+        self.instrdict[0x0c] = instr("inc c", 0,instrimpl.incc, 4)
+        self.instrdict[0x14] = instr("inc d", 0,instrimpl.incd, 4)
+        self.instrdict[0x1c] = instr("inc e", 0,instrimpl.ince, 4)
+        self.instrdict[0x24] = instr("inc h", 0,instrimpl.inch, 4)
+        self.instrdict[0x2c] = instr("inc l", 0,instrimpl.incl, 4)
+        self.instrdict[0x34] = instr("inc (hl)", 0,instrimpl.inchl, 12)
+        
+        # call
+        self.instrdict[0xcd] = instr("call %04x", 2,instrimpl.call, 12)
+        
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 
