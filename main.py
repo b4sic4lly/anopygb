@@ -184,6 +184,11 @@ class emulator():
         
         self.sp.set(self.sp.get() - 2)
         self.write2bytes(self.sp.get(), bytes)
+        
+    def pop2bytestack(self):
+        value = self.read2bytes(self.sp.get())
+        self.sp.set(self.sp.get() + 2)
+        return value
     
     def readbyte(self, pos):
         if pos < 0x0 or pos > 0xffff:
@@ -413,10 +418,10 @@ class emulator():
         self.instrdict[0x25] = instr("dec h", 0,instrimpl.dech, 4)
         self.instrdict[0x2d] = instr("dec l", 0,instrimpl.decl, 4)
         self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.decmhl, 12)
-        self.instrdict[0x0b] = instr("dec bc", 0,instrimpl.decbc, 4)
-        self.instrdict[0x1b] = instr("dec de", 0,instrimpl.decde, 4)
-        self.instrdict[0x2b] = instr("dec hl", 0,instrimpl.dechl, 4)
-        self.instrdict[0x3b] = instr("dec sp", 0,instrimpl.decsp, 4)
+        self.instrdict[0x0b] = instr("dec bc", 0,instrimpl.decbc, 8)
+        self.instrdict[0x1b] = instr("dec de", 0,instrimpl.decde, 8)
+        self.instrdict[0x2b] = instr("dec hl", 0,instrimpl.dechl, 8)
+        self.instrdict[0x3b] = instr("dec sp", 0,instrimpl.decsp, 8)
          
         # jr cc,n 
         self.instrdict[0x20] = instr("jr nz,%02x", 1,instrimpl.jrnzn, 8)
@@ -502,6 +507,20 @@ class emulator():
         
         # call
         self.instrdict[0xcd] = instr("call %04x", 2,instrimpl.call, 12)
+
+        # or
+        self.instrdict[0xb7] = instr("or a", 0,instrimpl.ora, 4)
+        self.instrdict[0xb0] = instr("or b", 0,instrimpl.orb, 4)
+        self.instrdict[0xb1] = instr("or c", 0,instrimpl.orc, 4)
+        self.instrdict[0xb2] = instr("or d", 0,instrimpl.ord, 4)
+        self.instrdict[0xb3] = instr("or e", 0,instrimpl.ore, 4)
+        self.instrdict[0xb4] = instr("or h", 0,instrimpl.orh, 4)
+        self.instrdict[0xb5] = instr("or l", 0,instrimpl.orl, 4)
+        self.instrdict[0xb6] = instr("or (hl)", 0,instrimpl.orhl, 8)
+        self.instrdict[0xf6] = instr("or %02x", 1,instrimpl.orn, 8)
+        
+        # ret
+        self.instrdict[0xc9] = instr("ret", 0,instrimpl.ret, 8)
         
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         

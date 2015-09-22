@@ -424,7 +424,66 @@ class instrimpl():
         emu.push2bytestack(emu.pc.get())
         emu.pc.set(op)
             
+    @staticmethod
+    def orwitha(emu, value):
+        result = emu.af.gethigh() | value
+        if result == 0:
+            emu.zero = True
+        else:
+            emu.zero = False
+            
+        emu.substract = False
+        emu.halfcarry = False
+        emu.carry = False
+        
+        return result
     
+    @staticmethod
+    def ora(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.af.gethigh()))
+    
+    @staticmethod
+    def orb(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.bc.gethigh()))
+    
+    @staticmethod
+    def orc(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.bc.getlow()))
+    
+    @staticmethod
+    def ord(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.de.gethigh()))
+    
+    @staticmethod
+    def ore(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.de.getlow()))
+    
+    @staticmethod
+    def orh(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.hl.gethigh()))
+    
+    @staticmethod
+    def orl(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.hl.getlow()))
+    
+    @staticmethod
+    def orhl(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, emu.readbyte(emu.hl.get())))
+    
+    @staticmethod
+    def orn(emu, op):
+        emu.af.sethigh(instrimpl.orwitha(emu, op))
+    
+    @staticmethod
+    def ret(emu, op):
+        emu.pc.set(emu.pop2bytestack())
+        
+        
+        
+        
+        
+        
+        
         
         
         
