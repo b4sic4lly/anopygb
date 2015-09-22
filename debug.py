@@ -7,7 +7,10 @@ Created on Sep 21, 2015
 def dump(bram, start, end):
     rowcount=0
     rowstr = ""
-    counter = 0
+    counter = 1
+    
+    print "MEM:" + format(counter-1, '04x') + " ",
+    
     for byte in bram[start:end]:
         newbyte = format(byte, '02x') 
         print newbyte + " ",
@@ -16,13 +19,14 @@ def dump(bram, start, end):
         else:
             rowstr +="."
         
-        
-        
         rowcount+=1
         if rowcount >= 16:
             print rowstr
+            print "MEM:" + format(counter, '04x') + " ",
             rowstr = ""
             rowcount = 0
+        
+        counter+=1
         
         if counter == 0x134:
             print "WIR SIND DA " + byte

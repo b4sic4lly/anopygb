@@ -3,9 +3,9 @@ Created on Sep 21, 2015
 
 @author: mft
 '''
-import sys
+
 from debug import *
-from bitarray import bitarray
+from cpu import instrimpl 
 
 print "Starting AnoPyGB..."
 
@@ -76,6 +76,17 @@ class emulator():
     CARTRIDGETYPE_OFFSET = 0x147
     CART_TYPE_ROMONLY = 0
     
+    INT_VBLANK = (1 << 0)
+    INT_LCDSTAT = (1 << 1)
+    INT_TIMER = (1 << 2)
+    INT_SERIAL = (1 << 3)
+    INT_JOYPAD = (1 << 4)
+    
+    GPU_HBLANK = 0
+    GPU_VBLANK = 1
+    GPU_OAM = 2
+    GPU_VRAM = 3
+    
     def __init__(self, filename):
         self.mem = bytearray(65536)
         
@@ -106,7 +117,15 @@ class emulator():
         self.halfcarry = False
         self.carry = False
         
-        self.interruptsflag = False
+        self.interruptmasterenable = True
+        
+        
+        self.ticks = 0
+        self.gputicks = 0
+        self.lastticks = 0
+        
+        self.gpuline = 0
+        self.gpumode = 0
         
         #self.flag = register(0, 16)
         
@@ -143,6 +162,13 @@ class emulator():
         self.writebyte(0xFF4B, 0x00)
         self.writebyte(0xFFFF, 0x00)
     
+    def pushstack(self, byte):
+        if byte < 0x0 or byte > 0xff:
+            print "[ERROR] Cannot push byte %d. Value too big" % byte
+            return
+        
+        self.sp.set(self.sp.get() - 2)
+        self.writebyte(self.sp.get(), byte)
     
     def readbyte(self, pos):
         if pos < 0x0 or pos > 0xffff:
@@ -158,7 +184,6 @@ class emulator():
         
         op1 = self.mem[pos+1]
         op2 = self.mem[pos]
-        
         
         return (op1<<8) | op2
 
@@ -197,17 +222,95 @@ class emulator():
 
     def start(self):
         self.running = True
-        raw_input("[Press key to start emulation]")
+                
+        #raw_input("[Press key to start emulation]")
         while self.running == True:
             self.cpunext()
-            
+            self.gpunext()
+            self.intnext()
             
         print "Emulation finished"
-        
+    
+    
+    def intnext(self):
+        print "master %d, enabled %d, flag %d" % (self.interruptmasterenable, self.getInterruptEnable(), self.getInterruptFlags())
+        if self.interruptmasterenable == True and self.getInterruptEnable() != 0 and self.getInterruptFlags() != 0:
+            inttype = self.getInterruptEnable() & self.getInterruptFlags()
+            print "INTNEXT: inttype: %d" % inttype
+            if inttype == self.INT_VBLANK:
+                print "INTERRUPT VBLANK START"
+                self.setInterruptFlags(self.getInterruptEnable() & ~self.INT_VBLANK)
+                # TODO: you have to draw here
+                
+                self.interruptmasterenable = False;
+                self.pushstack(self.pc.get())
+                self.pc.set(0x40);
+                
+                self.ticks += 12;
+
+
+    def getInterruptEnable(self):
+        return self.readbyte(0xffff)
+    
+    def setInterruptEnable(self, value):
+        self.writebyte(0xffff, value)
+    
+    def getInterruptFlags(self):
+        return self.readbyte(0xff0f)
+
+    def setInterruptFlags(self, value):
+        self.writebyte(0xff0f, value)
+
+    def fireinterrupt(self, inttype):
+        #print "enable&inttype %d" % (inttype & self.getInterruptEnable())
+        if (self.getInterruptEnable() & inttype) != 0:
+            self.setInterruptEnable(self.getInterruptEnable() | inttype)
+
+    def gpunext(self):
+        self.gputicks += self.ticks - self.lastticks
+        self.lastticks = self.ticks
+
+        #print self.gpuline
+
+        #print "CURRENT GPUMODE: %d" % self.gpumode
+
+        if self.gpumode == self.GPU_HBLANK:
+
+            if self.gputicks >= 204:
+                # hblank ACTION
+                self.gpuline+=1
+                            
+                if self.gpuline == 143:
+                    # fire vblank interrupt
+                    self.fireinterrupt(self.INT_VBLANK)
+                    self.gpumode = self.GPU_VBLANK
+                                
+                self.gputicks -= 204
+                
+        elif self.gpumode == self.GPU_VBLANK:
+            if self.gputicks >= 456:
+                self.gpuline += 1
+                
+                if self.gpuline > 153:
+                    self.gpuline = 0
+                    
+                    # TODO: this has to be MODE OAM
+                    self.gpumode = self.GPU_HBLANK
+                
+                self.gputicks -= 456
+                
+        else:
+            print "[ERROR] GPU-Mode No. %d not possible" % self.gpumode 
 
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
-        print "=============================\ncurrent instruction " + hex(instruction)
+        
+        
+        
+        #if self.pc.get() == 0x02b2:
+        #    print "BREAKPOINT "
+        #    self.running = False
+        #    return
         
         # Get instruction length
         try:
@@ -225,21 +328,28 @@ class emulator():
         elif instrlength == 2:
             operand = self.read2bytes(self.pc.get() + 1) 
         
-        print "instruction: " + self.instrdict[instruction].text
-        print "operand: " + hex(operand)
         
         # inc pc
         self.pc.set(self.pc.get()+instrlength+1)
         
+        self.ticks += self.instrdict[instruction].ticks
+        
         # execute instruction
         self.instrdict[instruction].function(self, operand)
-                
+        
+        
+        '''    
+        print "=============================\ncurrent instruction " + hex(instruction)
+        print "instruction: " + self.instrdict[instruction].text
+        print "operand: " + hex(operand)
+          
         print "-------------"
         print "CURRENT REGISTERS"
         print "AF: 0x" + format(self.af.get(), '04x') + "  BC: 0x" + format(self.bc.get(), '04x')
         print "DE: 0x" + format(self.de.get(), '04x') + "  HL: 0x" + format(self.hl.get(), '04x')
         print "SP: 0x" + format(self.sp.get(), '04x') + "  PC: 0x" + format(self.pc.get(), '04x')
         print "-------------"
+        '''
         
     def initinstrdict(self):
         self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
@@ -309,275 +419,7 @@ class emulator():
                 
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
-class instrimpl():
-    
-    @staticmethod
-    def cp(emu, value):
-        result = emu.af.gethigh() - value
-        if result == 0:
-            emu.zero = True
-        else:
-            emu.zero = False
-        
-        emu.substract = True
-        
-        if (value & 0x0f) > (emu.af.gethigh() & 0x0f):
-            emu.halfcarry = True
-        else:
-            emu.halfcarry = False
-        
-        # carry
-        if emu.af.gethigh() < value:
-            emu.carry = True
-        else:
-            emu.carry = False
-            
-    
-    @staticmethod
-    def cpa(emu, op):
-        instrimpl.cp(emu, emu.af.gethigh())
-    
-    @staticmethod
-    def cpb(emu, op):
-        instrimpl.cp(emu, emu.bc.gethigh())
-    
-    @staticmethod
-    def cpc(emu, op):
-        instrimpl.cp(emu, emu.bc.getlow())
-    
-    @staticmethod
-    def cpd(emu, op):
-        instrimpl.cp(emu, emu.de.gethigh())
-    
-    @staticmethod
-    def cpe(emu, op):
-        instrimpl.cp(emu, emu.de.getlow())
-    
-    @staticmethod
-    def cph(emu, op):
-        instrimpl.cp(emu, emu.hl.gethigh())
-    
-    @staticmethod
-    def cpl(emu, op):
-        instrimpl.cp(emu, emu.hl.getlow())
-    
-    @staticmethod
-    def cphl(emu, op):
-        instrimpl.cp(emu, emu.readbyte(emu.hl.get()))
-        
-    @staticmethod
-    def cpn(emu, op):
-        instrimpl.cp(emu, op)
-    
-    
-    
-    
-    
-    
-    @staticmethod
-    def ldhan(emu, op):
-        print "memory at 0xff00+op is %d" % emu.readbyte(0xff00+op)
-        emu.af.sethigh(emu.readbyte(0xff00+op))
-    
-    @staticmethod
-    def ldhna(emu, op):
-        emu.writebyte(0xff00+op, emu.af.gethigh())
-    
-    
-    @staticmethod
-    def tosignedint(byte):
-        if byte > 127:
-            return (256-byte) * (-1)
-        else:
-            return byte
-    
-    @staticmethod
-    def stub(emu, op):
-        print "This instruction is not implemented"
-        emu.running = False
-    
-    @staticmethod
-    def nop(emu, op):
-        pass
-    
-    @staticmethod
-    def jpnn(emu, op):
-        emu.pc.set(op)
-    
-    @staticmethod
-    def xora(emu, op):
-        emu.af.sethigh(emu.af.gethigh() ^ emu.af.gethigh())
-        
-        if emu.af.gethigh() == 0:
-            emu.zero = True
-        else:
-            emu.zero = False
-        emu.carry = False
-        emu.halfcarry = False
-        emu.substract = False
-    
-    @staticmethod
-    def ldhlnn(emu, op):
-        emu.hl.set(op)
-    
-    @staticmethod
-    def ldbn(emu, op):
-        emu.bc.sethigh(op)
-    
-    @staticmethod
-    def ldcn(emu, op):
-        emu.bc.setlow(op)
-        
-    @staticmethod
-    def lddn(emu, op):
-        emu.de.sethigh(op)
-        
-    @staticmethod
-    def lden(emu, op):
-        emu.de.setlow(op)
-        
-    @staticmethod
-    def ldhn(emu, op):
-        emu.hl.sethigh(op)
-        
-    @staticmethod
-    def ldln(emu, op):
-        emu.hl.setlow(op)
-        
-    @staticmethod
-    def ldhlda(emu, op):
-        emu.writebyte(emu.hl.get(), emu.af.gethigh())
-        emu.hl.set(emu.hl.get()-1)
-        
-        
-    @staticmethod 
-    def dec(emu, value):
-        result = (value - 1) % 256
-        if result == 0:
-            emu.zero = True
-        else:
-            emu.zero = False
-        
-        emu.substract = True
-        if (value & 0x0f) == 0x0f:
-            emu.halfcarry = True
-        else:
-            emu.halfcarry = False
-            
-        return result
-    
-    @staticmethod
-    def deca(emu, op):
-        emu.af.sethigh(instrimpl.dec(emu, emu.af.gethigh()))
-        
-    
-    @staticmethod
-    def decb(emu, op):
-        emu.bc.sethigh(instrimpl.dec(emu, emu.bc.gethigh()))
-        
-    @staticmethod
-    def decc(emu, op):
-        emu.bc.setlow(instrimpl.dec(emu, emu.bc.getlow()))
-        
-    @staticmethod
-    def decd(emu, op):
-        emu.de.sethigh(instrimpl.dec(emu, emu.de.gethigh()))
-        
-    @staticmethod
-    def dece(emu, op):
-        emu.de.setlow(instrimpl.dec(emu, emu.de.getlow()))
-        
-    @staticmethod
-    def dech(emu, op):
-        emu.hl.sethigh(instrimpl.dec(emu, emu.hl.gethigh()))
-        
-    @staticmethod
-    def decl(emu, op):
-        emu.hl.setlow(instrimpl.dec(emu, emu.hl.getlow())) 
-        
-    @staticmethod
-    def dechl(emu, op):
-        # are you sure?
-        emu.writebyte(instrimpl.dec(emu, emu.readbyte(emu.hl.get())))
-        
-    @staticmethod
-    def jrnzn(emu, op):
-        if emu.zero == False:
-            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
-            
-    @staticmethod
-    def jrzn(emu, op):
-        if emu.zero == True:
-            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
-            
-    @staticmethod
-    def jrncn(emu, op):
-        if emu.carry == False:
-            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
-            
-    @staticmethod
-    def jrcn(emu, op):
-        if emu.carry == True:
-            emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))      
-    
-    @staticmethod
-    def ldaa(emu, op):
-        emu.af.sethigh(emu.af.gethigh())    
-    
-    @staticmethod
-    def ldab(emu, op):
-        emu.af.sethigh(emu.bc.gethigh())    
-    
-    @staticmethod
-    def ldac(emu, op):
-        emu.af.sethigh(emu.bc.getlow())    
-    
-    @staticmethod
-    def ldad(emu, op):
-        emu.af.sethigh(emu.de.gethigh())    
-    
-    @staticmethod
-    def ldae(emu, op):
-        emu.af.sethigh(emu.de.getlow())    
-    
-    @staticmethod
-    def ldah(emu, op):
-        emu.af.sethigh(emu.hl.gethigh())    
-    
-    @staticmethod
-    def ldal(emu, op):
-        emu.af.sethigh(emu.hl.getlow())    
-    
-    @staticmethod
-    def ldabc(emu, op):
-        emu.af.sethigh(emu.readbyte(emu.bc.get()))    
-    
-    @staticmethod
-    def ldade(emu, op):
-        emu.af.sethigh(emu.readbyte(emu.de.get()))    
-    
-    @staticmethod
-    def ldahl(emu, op):
-        emu.af.sethigh(emu.hl.get())    
-    
-    @staticmethod
-    def ldann(emu, op):
-        emu.af.sethigh(emu.readbyte(op))    
-    
-    @staticmethod
-    def ldan(emu, op):
-        emu.af.sethigh(op)    
-    
-    @staticmethod
-    def di(emu, op):
-        # TODO: this is not correct they are disabled after the next instruction 
-        emu.interruptsflag = False
-    
-    @staticmethod
-    def ei(emu, op):
-        # TODO: this is not correct they are enabled after the next instruction
-        emu.interruptsflag = True
-    
+
     
     
     
