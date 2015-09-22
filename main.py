@@ -124,7 +124,6 @@ class emulator():
         self.gputicks = 0
         self.lastticks = 0
         
-        self.gpuline = 0
         self.gpumode = 0
         
         #self.flag = register(0, 16)
@@ -233,7 +232,6 @@ class emulator():
     
     
     def intnext(self):
-        print "master %d, enabled %d, flag %d" % (self.interruptmasterenable, self.getInterruptEnable(), self.getInterruptFlags())
         if self.interruptmasterenable == True and self.getInterruptEnable() != 0 and self.getInterruptFlags() != 0:
             inttype = self.getInterruptEnable() & self.getInterruptFlags()
             print "INTNEXT: inttype: %d" % inttype
@@ -260,6 +258,15 @@ class emulator():
 
     def setInterruptFlags(self, value):
         self.writebyte(0xff0f, value)
+        
+    def addGpuLine(self, value):
+        self.writebyte(0xff44, self.readbyte(0xff44) + value)
+        
+    def setGpuLine(self, value):
+        self.writebyte(0xff44, value)
+        
+    def getGpuLine(self):
+        return self.readbyte(0xff44)
 
     def fireinterrupt(self, inttype):
         #print "enable&inttype %d" % (inttype & self.getInterruptEnable())
@@ -278,9 +285,9 @@ class emulator():
 
             if self.gputicks >= 204:
                 # hblank ACTION
-                self.gpuline+=1
+                self.addGpuLine(1)
                             
-                if self.gpuline == 143:
+                if self.getGpuLine() == 143:
                     # fire vblank interrupt
                     self.fireinterrupt(self.INT_VBLANK)
                     self.gpumode = self.GPU_VBLANK
@@ -289,10 +296,10 @@ class emulator():
                 
         elif self.gpumode == self.GPU_VBLANK:
             if self.gputicks >= 456:
-                self.gpuline += 1
+                self.addGpuLine(1)
                 
-                if self.gpuline > 153:
-                    self.gpuline = 0
+                if self.getGpuLine() > 153:
+                    self.setGpuLine(0)
                     
                     # TODO: this has to be MODE OAM
                     self.gpumode = self.GPU_HBLANK
@@ -304,8 +311,6 @@ class emulator():
 
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
-        
-        
         
         #if self.pc.get() == 0x02b2:
         #    print "BREAKPOINT "
@@ -328,6 +333,7 @@ class emulator():
         elif instrlength == 2:
             operand = self.read2bytes(self.pc.get() + 1) 
         
+        dumpinstruction(self, instruction, operand)
         
         # inc pc
         self.pc.set(self.pc.get()+instrlength+1)
@@ -338,7 +344,8 @@ class emulator():
         self.instrdict[instruction].function(self, operand)
         
         
-        '''    
+        
+        '''
         print "=============================\ncurrent instruction " + hex(instruction)
         print "instruction: " + self.instrdict[instruction].text
         print "operand: " + hex(operand)
@@ -353,17 +360,17 @@ class emulator():
         
     def initinstrdict(self):
         self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
-        self.instrdict[0xc3] = instr("jp nn", 2,instrimpl.jpnn, 12)
+        self.instrdict[0xc3] = instr("jp %d", 2,instrimpl.jpnn, 12)
         self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
-        self.instrdict[0x21] = instr("ld hl,nn", 2,instrimpl.ldhlnn, 12) 
+        self.instrdict[0x21] = instr("ld hl,%d", 2,instrimpl.ldhlnn, 12) 
                 
         # ld nn,n
-        self.instrdict[0x06] = instr("ld B,n", 1,instrimpl.ldbn, 8)
-        self.instrdict[0x0e] = instr("ld C,n", 1,instrimpl.ldcn, 8)
-        self.instrdict[0x16] = instr("ld D,n", 1,instrimpl.lddn, 8)
-        self.instrdict[0x1e] = instr("ld E,n", 1,instrimpl.lden, 8)
-        self.instrdict[0x26] = instr("ld H,n", 1,instrimpl.ldhn, 8)
-        self.instrdict[0x2e] = instr("ld L,n", 1,instrimpl.ldln, 8)
+        self.instrdict[0x06] = instr("ld B,%d", 1,instrimpl.ldbn, 8)
+        self.instrdict[0x0e] = instr("ld C,%d", 1,instrimpl.ldcn, 8)
+        self.instrdict[0x16] = instr("ld D,%d", 1,instrimpl.lddn, 8)
+        self.instrdict[0x1e] = instr("ld E,%d", 1,instrimpl.lden, 8)
+        self.instrdict[0x26] = instr("ld H,%d", 1,instrimpl.ldhn, 8)
+        self.instrdict[0x2e] = instr("ld L,%d", 1,instrimpl.ldln, 8)
         
         # ld (hld),a
         self.instrdict[0x32] = instr("ld (hld),a", 0,instrimpl.ldhlda, 8)
@@ -379,10 +386,10 @@ class emulator():
         self.instrdict[0x35] = instr("dec (hl)", 0,instrimpl.dechl, 12)
         
         # jr cc,n
-        self.instrdict[0x20] = instr("jr nz,n", 1,instrimpl.jrnzn, 8)
-        self.instrdict[0x28] = instr("jr z,n",  0,instrimpl.jrzn, 8)
-        self.instrdict[0x30] = instr("jr nc,n", 0,instrimpl.jrncn, 8)
-        self.instrdict[0x38] = instr("jr c,n",  0,instrimpl.jrcn, 8)
+        self.instrdict[0x20] = instr("jr nz,%02x", 1,instrimpl.jrnzn, 8)
+        self.instrdict[0x28] = instr("jr z,%02x",  1,instrimpl.jrzn, 8)
+        self.instrdict[0x30] = instr("jr nc,%02x", 1,instrimpl.jrncn, 8)
+        self.instrdict[0x38] = instr("jr c,%02x",  1,instrimpl.jrcn, 8)
         
         #ld a,n
         self.instrdict[0x7f] = instr("ld A,A", 0,instrimpl.ldaa, 4)
@@ -395,8 +402,8 @@ class emulator():
         self.instrdict[0x0a] = instr("ld A,(bc)", 0,instrimpl.ldabc, 8)
         self.instrdict[0x1a] = instr("ld A,(de)", 0,instrimpl.ldade, 8)
         self.instrdict[0x7e] = instr("ld A,(hl)", 0,instrimpl.ldahl, 8)
-        self.instrdict[0xfa] = instr("ld A,(nn)", 2,instrimpl.ldann, 16)
-        self.instrdict[0x3e] = instr("ld A,n", 1,instrimpl.ldan, 8)
+        self.instrdict[0xfa] = instr("ld A,(%d)", 2,instrimpl.ldann, 16)
+        self.instrdict[0x3e] = instr("ld A,%d", 1,instrimpl.ldan, 8)
         
         # interrupts di, ei
         self.instrdict[0xf3] = instr("di", 0,instrimpl.di, 4)
@@ -404,7 +411,7 @@ class emulator():
         
         # ldhna
         self.instrdict[0xe0] = instr("ld ($FF00+%d),a", 1, instrimpl.ldhna, 12)
-        self.instrdict[0xf0] = instr("ld a,($FF00+%d)", 1, instrimpl.ldhan, 12)
+        self.instrdict[0xf0] = instr("ld a,($FF00+%02x)", 1, instrimpl.ldhan, 12)
         
         # cp n
         self.instrdict[0xbf] = instr("cp a", 0, instrimpl.cpa, 4)
@@ -415,7 +422,7 @@ class emulator():
         self.instrdict[0xbc] = instr("cp h", 0, instrimpl.cph, 4)
         self.instrdict[0xbd] = instr("cp l", 0, instrimpl.cpl, 4)
         self.instrdict[0xbe] = instr("cp (hl)", 0, instrimpl.cphl, 8)
-        self.instrdict[0xfe] = instr("cp n", 1, instrimpl.cpn, 8)
+        self.instrdict[0xfe] = instr("cp %02x", 1, instrimpl.cpn, 8)
                 
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         

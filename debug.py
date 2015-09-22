@@ -33,3 +33,28 @@ def dump(bram, start, end):
             
     if rowstr != "":
         print rowstr
+        
+        
+def dumpinstruction(emu, instruction, operand):
+    # print current instruction
+    debugstring = "PC %04x " % emu.pc.get()
+    
+    instrlength = emu.instrdict[instruction].oplen
+    
+    if instrlength>0:
+        debugstring += emu.instrdict[instruction].text % operand
+    else:
+        debugstring += emu.instrdict[instruction].text
+    
+    
+    if len(debugstring) <= 14:
+        debugstring += "\t"
+    
+    if len(debugstring) <= 23:
+        debugstring += "\t"
+    
+    debugstring += "AF: 0x" + format(emu.af.get(), '04x') + "\tBC: 0x" + format(emu.bc.get(), '04x') + " "
+    debugstring += "DE: 0x" + format(emu.de.get(), '04x') + "\tHL: 0x" + format(emu.hl.get(), '04x') + " "
+    debugstring += "SP: 0x" + format(emu.sp.get(), '04x') + "\tPC: 0x" + format(emu.pc.get(), '04x') + " "
+         
+    print debugstring
