@@ -64,7 +64,34 @@ class instrimpl():
     def cpn(emu, op):
         instrimpl.cp(emu, op)
     
+    @staticmethod
+    def ldhlb(emu, op):
+        emu.writebyte(emu.hl.get(), emu.bc.gethigh())
     
+    @staticmethod
+    def ldhlc(emu, op):
+        emu.writebyte(emu.hl.get(), emu.bc.getlow())
+    
+    @staticmethod
+    def ldhld(emu, op):
+        emu.writebyte(emu.hl.get(), emu.de.gethigh())
+    
+    @staticmethod
+    def ldhle(emu, op):
+        emu.writebyte(emu.hl.get(), emu.de.getlow())
+    
+    @staticmethod
+    def ldhlh(emu, op):
+        emu.writebyte(emu.hl.get(), emu.hl.gethigh())
+    
+    @staticmethod
+    def ldhll(emu, op):
+        emu.writebyte(emu.hl.get(), emu.hl.getlow())
+    
+    @staticmethod
+    def ldhln(emu, op):
+        emu.writebyte(emu.hl.get(), op)
+        
     
     
     

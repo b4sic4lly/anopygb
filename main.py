@@ -269,7 +269,6 @@ class emulator():
         return self.readbyte(0xff44)
 
     def fireinterrupt(self, inttype):
-        #print "enable&inttype %d" % (inttype & self.getInterruptEnable())
         if (self.getInterruptEnable() & inttype) != 0:
             self.setInterruptEnable(self.getInterruptEnable() | inttype)
 
@@ -277,9 +276,8 @@ class emulator():
         self.gputicks += self.ticks - self.lastticks
         self.lastticks = self.ticks
 
-        #print self.gpuline
+        
 
-        #print "CURRENT GPUMODE: %d" % self.gpumode
 
         if self.gpumode == self.GPU_HBLANK:
 
@@ -312,10 +310,10 @@ class emulator():
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
         
-        #if self.pc.get() == 0x02b2:
-        #    print "BREAKPOINT "
-        #    self.running = False
-        #    return
+        if self.pc.get() == 0x2817:
+            print "GRAPHIC BREAKPOINT"
+            self.running = False
+            return
         
         # Get instruction length
         try:
@@ -360,17 +358,17 @@ class emulator():
         
     def initinstrdict(self):
         self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
-        self.instrdict[0xc3] = instr("jp %d", 2,instrimpl.jpnn, 12)
+        self.instrdict[0xc3] = instr("jp %04x", 2,instrimpl.jpnn, 12)
         self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
-        self.instrdict[0x21] = instr("ld hl,%d", 2,instrimpl.ldhlnn, 12) 
+        self.instrdict[0x21] = instr("ld hl,%04x", 2,instrimpl.ldhlnn, 12) 
                 
         # ld nn,n
-        self.instrdict[0x06] = instr("ld B,%d", 1,instrimpl.ldbn, 8)
-        self.instrdict[0x0e] = instr("ld C,%d", 1,instrimpl.ldcn, 8)
-        self.instrdict[0x16] = instr("ld D,%d", 1,instrimpl.lddn, 8)
-        self.instrdict[0x1e] = instr("ld E,%d", 1,instrimpl.lden, 8)
-        self.instrdict[0x26] = instr("ld H,%d", 1,instrimpl.ldhn, 8)
-        self.instrdict[0x2e] = instr("ld L,%d", 1,instrimpl.ldln, 8)
+        self.instrdict[0x06] = instr("ld B,%02x", 1,instrimpl.ldbn, 8)
+        self.instrdict[0x0e] = instr("ld C,%02x", 1,instrimpl.ldcn, 8)
+        self.instrdict[0x16] = instr("ld D,%02x", 1,instrimpl.lddn, 8)
+        self.instrdict[0x1e] = instr("ld E,%02x", 1,instrimpl.lden, 8)
+        self.instrdict[0x26] = instr("ld H,%02x", 1,instrimpl.ldhn, 8)
+        self.instrdict[0x2e] = instr("ld L,%02x", 1,instrimpl.ldln, 8)
         
         # ld (hld),a
         self.instrdict[0x32] = instr("ld (hld),a", 0,instrimpl.ldhlda, 8)
@@ -402,8 +400,8 @@ class emulator():
         self.instrdict[0x0a] = instr("ld A,(bc)", 0,instrimpl.ldabc, 8)
         self.instrdict[0x1a] = instr("ld A,(de)", 0,instrimpl.ldade, 8)
         self.instrdict[0x7e] = instr("ld A,(hl)", 0,instrimpl.ldahl, 8)
-        self.instrdict[0xfa] = instr("ld A,(%d)", 2,instrimpl.ldann, 16)
-        self.instrdict[0x3e] = instr("ld A,%d", 1,instrimpl.ldan, 8)
+        self.instrdict[0xfa] = instr("ld A,(%04x)", 2,instrimpl.ldann, 16)
+        self.instrdict[0x3e] = instr("ld A,%02x", 1,instrimpl.ldan, 8)
         
         # interrupts di, ei
         self.instrdict[0xf3] = instr("di", 0,instrimpl.di, 4)
@@ -423,7 +421,16 @@ class emulator():
         self.instrdict[0xbd] = instr("cp l", 0, instrimpl.cpl, 4)
         self.instrdict[0xbe] = instr("cp (hl)", 0, instrimpl.cphl, 8)
         self.instrdict[0xfe] = instr("cp %02x", 1, instrimpl.cpn, 8)
-                
+        
+        # ld r1,r2
+        self.instrdict[0x70] = instr("ld (hl),b", 0, instrimpl.ldhlb, 8)
+        self.instrdict[0x71] = instr("ld (hl),c", 0, instrimpl.ldhlc, 8)
+        self.instrdict[0x72] = instr("ld (hl),d", 0, instrimpl.ldhld, 8)
+        self.instrdict[0x73] = instr("ld (hl),e", 0, instrimpl.ldhle, 8)
+        self.instrdict[0x74] = instr("ld (hl),h", 0, instrimpl.ldhlh, 8)
+        self.instrdict[0x75] = instr("ld (hl),l", 0, instrimpl.ldhll, 8)
+        self.instrdict[0x36] = instr("ld (hl),%02x", 1, instrimpl.ldhln, 12)
+                        
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 

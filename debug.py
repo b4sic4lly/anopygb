@@ -46,8 +46,10 @@ def dumpinstruction(emu, instruction, operand):
     else:
         debugstring += emu.instrdict[instruction].text
     
+    #print len(debugstring)
     
-    if len(debugstring) <= 14:
+    
+    if len(debugstring) <= 15:
         debugstring += "\t"
     
     if len(debugstring) <= 23:
