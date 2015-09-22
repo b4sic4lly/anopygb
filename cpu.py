@@ -91,9 +91,55 @@ class instrimpl():
     @staticmethod
     def ldhln(emu, op):
         emu.writebyte(emu.hl.get(), op)
+    
+    @staticmethod
+    def ldba(emu, op):
+        emu.bc.sethigh(emu.af.gethigh())
+    
+    @staticmethod
+    def ldca(emu, op):
+        emu.bc.setlow(emu.af.gethigh())
+        
+    @staticmethod
+    def ldda(emu, op):
+        emu.de.sethigh(emu.af.gethigh())
+    
+    @staticmethod
+    def ldea(emu, op):
+        emu.de.setlow(emu.af.gethigh())
+        
+    @staticmethod
+    def ldha(emu, op):
+        emu.hl.sethigh(emu.af.gethigh())
+        
+    @staticmethod
+    def ldla(emu, op):
+        emu.de.setlow(emu.af.gethigh())
+        
+    @staticmethod
+    def ldbca(emu, op):
+        emu.writebyte(emu.bc.get(), emu.af.gethigh())
+    
+    @staticmethod
+    def lddea(emu, op):
+        emu.writebyte(emu.de.get(), emu.af.gethigh())
+        
+    @staticmethod
+    def ldhla(emu, op):
+        emu.writebyte(emu.hl.get(), emu.af.gethigh())
+        
+    @staticmethod
+    def ldnna(emu, op):
+        emu.writebyte(op, emu.af.gethigh())
+        
+    
+        
         
     
     
+    
+    
+     
     
     
     @staticmethod

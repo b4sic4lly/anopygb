@@ -222,7 +222,7 @@ class emulator():
     def start(self):
         self.running = True
                 
-        #raw_input("[Press key to start emulation]")
+        raw_input("[Press key to start emulation]")
         while self.running == True:
             self.cpunext()
             self.gpunext()
@@ -422,7 +422,7 @@ class emulator():
         self.instrdict[0xbe] = instr("cp (hl)", 0, instrimpl.cphl, 8)
         self.instrdict[0xfe] = instr("cp %02x", 1, instrimpl.cpn, 8)
         
-        # ld r1,r2
+        # ld (hl),x
         self.instrdict[0x70] = instr("ld (hl),b", 0, instrimpl.ldhlb, 8)
         self.instrdict[0x71] = instr("ld (hl),c", 0, instrimpl.ldhlc, 8)
         self.instrdict[0x72] = instr("ld (hl),d", 0, instrimpl.ldhld, 8)
@@ -430,7 +430,20 @@ class emulator():
         self.instrdict[0x74] = instr("ld (hl),h", 0, instrimpl.ldhlh, 8)
         self.instrdict[0x75] = instr("ld (hl),l", 0, instrimpl.ldhll, 8)
         self.instrdict[0x36] = instr("ld (hl),%02x", 1, instrimpl.ldhln, 12)
-                        
+        
+        # ld *,A
+        self.instrdict[0x47] = instr("ld b,a", 0, instrimpl.ldba, 4)
+        self.instrdict[0x4f] = instr("ld c,a", 0, instrimpl.ldca, 4)
+        self.instrdict[0x57] = instr("ld d,a", 0, instrimpl.ldda, 4)
+        self.instrdict[0x5f] = instr("ld e,a", 0, instrimpl.ldea, 4)
+        self.instrdict[0x67] = instr("ld h,a", 0, instrimpl.ldha, 4)
+        self.instrdict[0x6f] = instr("ld l,a", 0, instrimpl.ldla, 4)
+        self.instrdict[0x02] = instr("ld (bc),a", 0, instrimpl.ldbca, 8)
+        self.instrdict[0x12] = instr("ld (de),a", 0, instrimpl.lddea, 8)
+        self.instrdict[0x77] = instr("ld (hl),a", 0, instrimpl.ldhla, 8)
+        self.instrdict[0xea] = instr("ld (%04x),a", 2, instrimpl.ldnna, 16)
+        
+             
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 
