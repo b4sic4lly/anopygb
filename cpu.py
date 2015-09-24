@@ -10,22 +10,22 @@ class instrimpl():
     def cp(emu, value):
         result = emu.af.gethigh() - value
         if result == 0:
-            emu.zero = True
+            emu.setZero(True)
         else:
-            emu.zero = False
+            emu.setZero(False)
         
         emu.substract = True
         
         if (value & 0x0f) > (emu.af.gethigh() & 0x0f):
-            emu.halfcarry = True
+            emu.setHalfcarry(True)
         else:
-            emu.halfcarry = False
+            emu.setHalfcarry(False)
         
         # carry
         if emu.af.gethigh() < value:
             emu.carry = True
         else:
-            emu.carry = False
+            emu.setCarry(False)
             
     
     @staticmethod
@@ -167,12 +167,12 @@ class instrimpl():
         emu.af.sethigh(emu.af.gethigh() ^ emu.af.gethigh())
         
         if emu.af.gethigh() == 0:
-            emu.zero = True
+            emu.setZero(True)
         else:
-            emu.zero = False
-        emu.carry = False
-        emu.halfcarry = False
-        emu.substract = False
+            emu.setZero(False)
+        emu.setCarry(False)
+        emu.setHalfcarry(False)
+        emu.setSubstract(False)
     
     @staticmethod
     def ldhlnn(emu, op):
@@ -225,15 +225,15 @@ class instrimpl():
     def dec(emu, value):
         result = (value - 1) % 256
         if result == 0:
-            emu.zero = True
+            emu.setZero(True)
         else:
-            emu.zero = False
+            emu.setZero(False)
         
         emu.substract = True
         if (value & 0x0f) == 0x0f:
-            emu.halfcarry = True
+            emu.setHalfcarry(True)
         else:
-            emu.halfcarry = False
+            emu.setHalfcarry(False)
             
         return result
     
@@ -290,22 +290,22 @@ class instrimpl():
     
     @staticmethod
     def jrnzn(emu, op):
-        if emu.zero == False:
+        if emu.getZero() == False:
             emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
             
     @staticmethod
     def jrzn(emu, op):
-        if emu.zero == True:
+        if emu.getZero() == True:
             emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
             
     @staticmethod
     def jrncn(emu, op):
-        if emu.carry == False:
+        if emu.getCarry() == False:
             emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))
             
     @staticmethod
     def jrcn(emu, op):
-        if emu.carry == True:
+        if emu.getCarry() == True:
             emu.pc.set(emu.pc.get() + instrimpl.tosignedint(op))      
     
     @staticmethod
@@ -406,16 +406,16 @@ class instrimpl():
     def inc(emu, value):
         result = (value + 1) % 256
         if result == 0:
-            emu.zero = True
+            emu.setZero(True)
         else:
-            emu.zero = False
+            emu.setZero(False)
         
-        emu.substract = False
+        emu.setSubstract(False)
         
         if (value & 0x0f) == 0x0f:
-            emu.halfcarry = True
+            emu.setHalfcarry(True)
         else:
-            emu.halfcarry = False
+            emu.setHalfcarry(False)
             
         return result    
         
@@ -428,13 +428,13 @@ class instrimpl():
     def orwitha(emu, value):
         result = emu.af.gethigh() | value
         if result == 0:
-            emu.zero = True
+            emu.setZero(True)
         else:
-            emu.zero = False
+            emu.setZero(False)
             
-        emu.substract = False
-        emu.halfcarry = False
-        emu.carry = False
+        emu.setSubstract(False)
+        emu.setHalfcarry(False)
+        emu.setCarry(False)
         
         return result
     
@@ -478,8 +478,88 @@ class instrimpl():
     def ret(emu, op):
         emu.pc.set(emu.pop2bytestack())
         
+    @staticmethod
+    def pushaf(emu, op):
+        emu.push2bytestack(emu.af.get())
+    
+    @staticmethod
+    def pushbc(emu, op):
+        emu.push2bytestack(emu.bc.get())
         
+    @staticmethod
+    def pushde(emu, op):
+        emu.push2bytestack(emu.de.get())
         
+    @staticmethod
+    def pushhl(emu, op):
+        emu.push2bytestack(emu.hl.get())
+            
+    @staticmethod
+    def andwitha(emu, value):
+        result = emu.af.gethigh() & value
+        if result == 0:
+            emu.setZero(True)
+        else:
+            emu.setZero(False)
+    
+        emu.setSubstract(False)
+        emu.setHalfcarry(True)
+        emu.setCarry(False)
+        
+        return result
+    
+    @staticmethod
+    def anda(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.af.gethigh()))
+    
+    @staticmethod
+    def andb(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.bc.gethigh()))
+        
+    @staticmethod
+    def andc(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.bc.getlow()))
+        
+    @staticmethod
+    def andd(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.de.gethigh()))
+        
+    @staticmethod
+    def ande(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.de.getlow()))
+        
+    @staticmethod
+    def andh(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.hl.gethigh()))
+        
+    @staticmethod
+    def andl(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.hl.getlow()))
+        
+    @staticmethod
+    def andhl(emu, op):
+        emu.af.sethigh(instrimpl.andwitha(emu, emu.readbyte(emu.hl.get())))
+        
+    @staticmethod
+    def andn(emu, op):
+        emu.sethigh(instrimpl.andwitha(emu, op))
+            
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        
+    
         
         
         

@@ -120,10 +120,6 @@ class emulator():
         self.sp = register(0xfffe, 16)
         self.pc = register(0x100, 16)
         
-        self.zero = False
-        self.substract = False
-        self.halfcarry = False
-        self.carry = False
         
         self.interruptmasterenable = True
         
@@ -207,6 +203,49 @@ class emulator():
         
         return (op1<<8) | op2
 
+    def setZero(self, value):
+        # mirror this in register F
+        if value == True:
+            self.af.setlow(self.af.getlow() | (1<<7))
+        else:
+            self.af.setlow(self.af.getlow() & ~(1<<7))
+    
+    def getZero(self):
+        return (self.af.getlow() >> 7) & 1
+    
+    def setSubstract(self, value):
+        # mirror this in register F
+        if value == True:
+            self.af.setlow(self.af.getlow() | (1<<6))
+        else:
+            self.af.setlow(self.af.getlow() & ~(1<<6))
+            
+    def getSubstract(self):
+        return (self.af.getlow() >> 6) & 1
+    
+    def setHalfcarry(self, value):
+        # mirror this in register F
+        if value == True:
+            self.af.setlow(self.af.getlow() | (1<<5))
+        else:
+            self.af.setlow(self.af.getlow() & ~(1<<5))
+            
+    def getHalfcarry(self):
+        return (self.af.getlow() >> 5) & 1
+    
+    def setCarry(self, value):
+        # mirror this in register F
+        if value == True:
+            self.af.setlow(self.af.getlow() | (1<<4))
+        else:
+            self.af.setlow(self.af.getlow() & ~(1<<4))
+            
+    def getCarry(self):
+        return (self.af.getlow() >> 4) & 1
+        
+    
+        
+
     def write2bytes(self, pos, value):
         if pos < 0x0 or pos > 0xfffe:
             print "[ERROR] Cannot access memory location at " + hex(pos)
@@ -280,7 +319,7 @@ class emulator():
                 # TODO: you have to draw here
                 
                 self.interruptmasterenable = False;
-                self.pushstack(self.pc.get())
+                self.push2bytestack(self.pc.get())
                 self.pc.set(0x40);
                 
                 self.ticks += 12;
@@ -522,6 +561,23 @@ class emulator():
         # ret
         self.instrdict[0xc9] = instr("ret", 0,instrimpl.ret, 8)
         
+        # push XX
+        self.instrdict[0xf5] = instr("push af", 0,instrimpl.pushaf, 16)
+        self.instrdict[0xc5] = instr("push bc", 0,instrimpl.pushbc, 16)
+        self.instrdict[0xd5] = instr("push de", 0,instrimpl.pushde, 16)
+        self.instrdict[0xe5] = instr("push hl", 0,instrimpl.pushhl, 16)
+        
+        # and X
+        self.instrdict[0xa7] = instr("and a", 0,instrimpl.anda, 4)
+        self.instrdict[0xa0] = instr("and b", 0,instrimpl.andb, 4)
+        self.instrdict[0xa1] = instr("and c", 0,instrimpl.andc, 4)
+        self.instrdict[0xa2] = instr("and d", 0,instrimpl.andd, 4)
+        self.instrdict[0xa3] = instr("and e", 0,instrimpl.ande, 4)
+        self.instrdict[0xa4] = instr("and h", 0,instrimpl.andh, 4)
+        self.instrdict[0xa5] = instr("and l", 0,instrimpl.andl, 4)
+        self.instrdict[0xa6] = instr("and (hl)", 0,instrimpl.andhl, 8)
+        self.instrdict[0xe7] = instr("and n", 0,instrimpl.andn, 8)
+        
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 
@@ -540,5 +596,4 @@ class emulator():
         
         
 emu = emulator("tetris.gb")
-
 
