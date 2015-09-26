@@ -270,6 +270,11 @@ class emulator():
             print "[ERROR] Cannot write value %d at %s. Value too big" % (value, hex(pos))
             return 
         
+        if pos > 0xffb6 and pos < 0xffbe:
+            print "ACCESS ffb[6-e]"
+            raw_input("")
+            
+        
         self.mem[pos] = value
     
         
@@ -303,11 +308,12 @@ class emulator():
             self.cpunext()
             self.gpunext()
             self.intnext()
-        
-        
+            
         print "Emulation finished"
         print "Loaded %d of 244 instructions" % len(self.instrdict)
     
+        print "memory:"
+        dump(self.mem, 0x2ac7, 0x2acf)
     
     def intnext(self):
         if self.interruptmasterenable == True and self.getInterruptEnable() != 0 and self.getInterruptFlags() != 0:
@@ -406,7 +412,7 @@ class emulator():
         elif instrlength == 2:
             operand = self.read2bytes(self.pc.get() + 1) 
         
-        dumpinstruction(self, instruction, operand)
+        
         
         # inc pc
         self.pc.set(self.pc.get()+instrlength+1)
@@ -415,7 +421,7 @@ class emulator():
         
         # execute instruction
         self.instrdict[instruction].function(self, operand)
-        
+        dumpinstruction(self, instruction, operand)
         
         
         '''
@@ -482,7 +488,7 @@ class emulator():
         self.instrdict[0xfa] = instr("ld A,(%04x)", 2,instrimpl.ldann, 16)
         self.instrdict[0x3e] = instr("ld A,%02x", 1,instrimpl.ldan, 8)
         
-        # interrupts di, ei
+        # interrupts di, ei 
         self.instrdict[0xf3] = instr("di", 0,instrimpl.di, 4)
         self.instrdict[0xfb] = instr("ei", 0,instrimpl.ei, 4)
         
@@ -529,7 +535,7 @@ class emulator():
         self.instrdict[0x31] = instr("ld sp,%04x", 2,instrimpl.ldspnn, 12)
         
         # ld a,(hl)
-        self.instrdict[0x2a] = instr("ld a,(hl)", 0,instrimpl.ldahl, 8)
+        self.instrdict[0x2a] = instr("ldi a,(hl)", 0,instrimpl.ldiahl, 8)
         
         # ld (c),a
         self.instrdict[0xe2] = instr("ld ($FF00+c),a", 0,instrimpl.ldff00ca, 8)
@@ -578,22 +584,16 @@ class emulator():
         self.instrdict[0xa6] = instr("and (hl)", 0,instrimpl.andhl, 8)
         self.instrdict[0xe7] = instr("and n", 0,instrimpl.andn, 8)
         
+        # ret cc
+        self.instrdict[0xc0] = instr("ret nz", 0,instrimpl.retnz, 8)
+        self.instrdict[0xc8] = instr("ret z", 0,instrimpl.retz, 8)
+        self.instrdict[0xd0] = instr("ret nc", 0,instrimpl.retnc, 8)
+        self.instrdict[0xd8] = instr("ret c", 0,instrimpl.retc, 8)
+        
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
 
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-        
         
 emu = emulator("tetris.gb")
 

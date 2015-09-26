@@ -345,8 +345,14 @@ class instrimpl():
         emu.af.sethigh(emu.readbyte(emu.de.get()))    
     
     @staticmethod
+    def ldiahl(emu, op):
+        emu.af.sethigh(emu.readbyte(emu.hl.get()))
+        emu.hl.set(emu.hl.get()+1)   
+        
+    @staticmethod
     def ldahl(emu, op):
-        emu.af.sethigh(emu.readbyte(emu.hl.get()))   
+        emu.af.sethigh(emu.readbyte(emu.hl.get()))
+        
     
     @staticmethod
     def ldann(emu, op):
@@ -544,8 +550,25 @@ class instrimpl():
     def andn(emu, op):
         emu.sethigh(instrimpl.andwitha(emu, op))
             
+    @staticmethod
+    def retnz(emu, op):
+        if emu.getZero() == False:
+            emu.pc.set(emu.pop2bytestack())
     
+    @staticmethod
+    def retz(emu, op):
+        if emu.getZero() == True:
+            emu.pc.set(emu.pop2bytestack())
     
+    @staticmethod
+    def retnc(emu, op):
+        if emu.getCarry() == False:
+            emu.pc.set(emu.pop2bytestack())
+    
+    @staticmethod
+    def retc(emu, op):
+        if emu.getCarry() == True:
+            emu.pc.set(emu.pop2bytestack())
     
     
     

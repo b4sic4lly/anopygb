@@ -37,9 +37,11 @@ def dump(bram, start, end):
         
 def dumpinstruction(emu, instruction, operand):
     # print current instruction
-    debugstring = "PC %04x " % emu.pc.get()
+    
     
     instrlength = emu.instrdict[instruction].oplen
+    
+    debugstring = "PC %04x " % (emu.pc.get()-(instrlength+1))
     
     if instrlength>0:
         debugstring += emu.instrdict[instruction].text % operand
