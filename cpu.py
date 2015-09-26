@@ -570,8 +570,21 @@ class instrimpl():
         if emu.getCarry() == True:
             emu.pc.set(emu.pop2bytestack())
     
+    @staticmethod
+    def popaf(emu, op):
+        emu.af.set(emu.pop2bytestack())
     
-    
+    @staticmethod
+    def popbc(emu, op):
+        emu.bc.set(emu.pop2bytestack())
+        
+    @staticmethod
+    def popde(emu, op):
+        emu.de.set(emu.pop2bytestack())
+        
+    @staticmethod
+    def pophl(emu, op):
+        emu.hl.set(emu.pop2bytestack())
     
     
     

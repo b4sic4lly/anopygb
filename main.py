@@ -269,10 +269,6 @@ class emulator():
         if value < 0x0 or value > 0xff:
             print "[ERROR] Cannot write value %d at %s. Value too big" % (value, hex(pos))
             return 
-        
-        if pos > 0xffb6 and pos < 0xffbe:
-            print "ACCESS ffb[6-e]"
-            raw_input("")
             
         
         self.mem[pos] = value
@@ -589,6 +585,12 @@ class emulator():
         self.instrdict[0xc8] = instr("ret z", 0,instrimpl.retz, 8)
         self.instrdict[0xd0] = instr("ret nc", 0,instrimpl.retnc, 8)
         self.instrdict[0xd8] = instr("ret c", 0,instrimpl.retc, 8)
+        
+        # pop nn
+        self.instrdict[0xf1] = instr("pop af", 0,instrimpl.popaf, 12)
+        self.instrdict[0xc1] = instr("pop bc", 0,instrimpl.popbc, 12)
+        self.instrdict[0xd1] = instr("pop de", 0,instrimpl.popde, 12)
+        self.instrdict[0xe1] = instr("pop hl", 0,instrimpl.pophl, 12)
         
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
