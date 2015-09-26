@@ -243,9 +243,6 @@ class emulator():
     def getCarry(self):
         return (self.af.getlow() >> 4) & 1
         
-    
-        
-
     def write2bytes(self, pos, value):
         if pos < 0x0 or pos > 0xfffe:
             print "[ERROR] Cannot access memory location at " + hex(pos)
@@ -257,9 +254,6 @@ class emulator():
         
         self.mem[pos] = (value & 0x00ff)
         self.mem[pos+1] = ((value &0xff00)>>8)
-        
-        
-        
 
     def writebyte(self, pos, value):
         if pos < 0x0 or pos > 0xffff:
@@ -269,7 +263,6 @@ class emulator():
         if value < 0x0 or value > 0xff:
             print "[ERROR] Cannot write value %d at %s. Value too big" % (value, hex(pos))
             return 
-            
         
         self.mem[pos] = value
     
@@ -326,6 +319,9 @@ class emulator():
                 
                 self.ticks += 12;
 
+    def returnfrominterrupt(self):
+        self.pc.set(self.pop2bytestack())
+        self.interruptmasterenable = True
 
     def getInterruptEnable(self):
         return self.readbyte(0xffff)
@@ -591,6 +587,9 @@ class emulator():
         self.instrdict[0xc1] = instr("pop bc", 0,instrimpl.popbc, 12)
         self.instrdict[0xd1] = instr("pop de", 0,instrimpl.popde, 12)
         self.instrdict[0xe1] = instr("pop hl", 0,instrimpl.pophl, 12)
+        
+        # reti
+        self.instrdict[0xd9] = instr("reti", 0,instrimpl.reti, 8)
         
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         

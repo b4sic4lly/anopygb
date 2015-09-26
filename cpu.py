@@ -586,7 +586,9 @@ class instrimpl():
     def pophl(emu, op):
         emu.hl.set(emu.pop2bytestack())
     
-    
+    @staticmethod
+    def reti(emu, op):
+        emu.returnfrominterrupt()
     
     
     
