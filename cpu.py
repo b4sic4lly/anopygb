@@ -148,6 +148,14 @@ class instrimpl():
             return (256-byte) * (-1)
         else:
             return byte
+        
+    @staticmethod
+    def tounsignedint(byte):
+        if byte < 0:
+            return byte + 256
+        else:
+            return byte
+        
     
     @staticmethod
     def stub(emu, op):
@@ -548,7 +556,7 @@ class instrimpl():
         
     @staticmethod
     def andn(emu, op):
-        emu.sethigh(instrimpl.andwitha(emu, op))
+        emu.af.sethigh(instrimpl.andwitha(emu, op))
             
     @staticmethod
     def retnz(emu, op):
@@ -589,14 +597,23 @@ class instrimpl():
     @staticmethod
     def reti(emu, op):
         emu.returnfrominterrupt()
-    
-    
-    
-    
-    
-    
-    
         
+    @staticmethod
+    def cplcomplement(emu, op):
+        emu.af.sethigh(instrimpl.tounsignedint(~emu.af.gethigh()))
+    
+    @staticmethod
+    def rrca(emu, op):
+        emu.setCarry((emu.af.gethigh() >> 0) & 1)
+        emu.setSubstract(False)
+        emu.setHalfcarry(False)
+        if emu.af.gethigh() >> 1 == 0:
+            emu.setZero(True)
+        else:
+            emu.setZero(False)
+        emu.af.sethigh(emu.af.gethigh() >> 1)
+    
+
     
         
         

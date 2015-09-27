@@ -574,7 +574,7 @@ class emulator():
         self.instrdict[0xa4] = instr("and h", 0,instrimpl.andh, 4)
         self.instrdict[0xa5] = instr("and l", 0,instrimpl.andl, 4)
         self.instrdict[0xa6] = instr("and (hl)", 0,instrimpl.andhl, 8)
-        self.instrdict[0xe7] = instr("and n", 0,instrimpl.andn, 8)
+        self.instrdict[0xe6] = instr("and %02x", 1,instrimpl.andn, 8)
         
         # ret cc
         self.instrdict[0xc0] = instr("ret nz", 0,instrimpl.retnz, 8)
@@ -590,6 +590,12 @@ class emulator():
         
         # reti
         self.instrdict[0xd9] = instr("reti", 0,instrimpl.reti, 8)
+        
+        # cpl
+        self.instrdict[0x2f] = instr("cpl", 0,instrimpl.cplcomplement, 4)
+        
+        # rrca
+        self.instrdict[0x0f] = instr("rrca", 0,instrimpl.rrca, 4)
         
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
