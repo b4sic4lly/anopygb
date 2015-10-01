@@ -10,18 +10,6 @@ import timeit
 
 print "Starting AnoPyGB..."
 
-'''
-intenablereg = bytearray(1)
-ram = bytearray(8*1024)
-ioports = bytearray(76)
-spritemem = bytearray(160)
-echoram = bytearray(8*1024)
-internalram = bytearray(8*1024)
-switchram = bytearray(8*1024)
-videoram = bytearray(8*1024)
-rom = bytearray(32*1024)
-'''
-
 
 
 
