@@ -8,6 +8,7 @@ from debug import *
 from cpu import instrimpl 
 import timeit
 
+import pygame
 print "Starting AnoPyGB..."
 
 
@@ -81,7 +82,8 @@ class emulator():
         
         self.running = False
         
-        
+        pygame.init()
+        screen = pygame.display.set_mode((160,144))
         
         # copy cartridge to memory
         self.mem[0x0:0x8000] = self.loadrom(filename)
@@ -108,9 +110,7 @@ class emulator():
         self.sp = register(0xfffe, 16)
         self.pc = register(0x100, 16)
         
-        
         self.interruptmasterenable = True
-        
         
         self.ticks = 0
         self.gputicks = 0
@@ -278,7 +278,7 @@ class emulator():
 
     def start(self):
         self.running = True
-                
+        self.realdebug = False        
         #raw_input("[Press key to start emulation]")
         
         while self.running == True:
@@ -373,16 +373,32 @@ class emulator():
         
         if self.pc.get() == 0x2817:
             print "GRAPHIC BREAKPOINT"
-            self.running = False
-            return
+            self.realdebug = True
+            
+        
+        
+        # check if extended instruction
+        if instruction == 0xcb:
+            # read next byte which is the extended opcode
+            nextopcode = self.readbyte(self.pc.get() + 1)
+            instruction = (instruction << 8) | nextopcode 
+            
+        # real time debugging breakpoints
+        #if instruction == 0xe9:
+        #    self.realdebug = True
+            
+            
         
         # Get instruction length
         try:
             instrlength = self.instrdict[instruction].oplen
         except:
             print "Undefined instruction: " + hex(instruction)
+            if instruction == 0xcb:
+                print "extended instruction unknown cb %02x" % self.readbyte(self.pc.get() + 1)
             self.running = False
             return
+        
         
         # Operand retrival, can be 0-2 bytes long, depending on operand
         operand = 0
@@ -391,19 +407,22 @@ class emulator():
             operand = self.readbyte(self.pc.get() + 1 )
         elif instrlength == 2:
             operand = self.read2bytes(self.pc.get() + 1) 
-        
-        
-        
         # inc pc
         self.pc.set(self.pc.get()+instrlength+1)
+        
+        if (instruction >> 8) == 0xcb:
+            self.pc.set(self.pc.get()+1)
         
         self.ticks += self.instrdict[instruction].ticks
         
         # execute instruction
         self.instrdict[instruction].function(self, operand)
         dumpinstruction(self, instruction, operand)
-        
-        
+    
+        if self.realdebug == True:
+            answer = raw_input("Realtime Debugging...[Enter] to continue, [e] for exit realtime debugging")
+            if answer == "e":
+                self.realdebug = False
         '''
         print "=============================\ncurrent instruction " + hex(instruction)
         print "instruction: " + self.instrdict[instruction].text
@@ -420,8 +439,17 @@ class emulator():
     def initinstrdict(self):
         self.instrdict[0x0]  = instr("nop",0,instrimpl.nop, 4)
         self.instrdict[0xc3] = instr("jp %04x", 2,instrimpl.jpnn, 12)
-        self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
         
+        # xor
+        self.instrdict[0xaf] = instr("xor a", 0,instrimpl.xora, 4)
+        self.instrdict[0xa8] = instr("xor b", 0,instrimpl.xorb, 4)
+        self.instrdict[0xa9] = instr("xor c", 0,instrimpl.xorc, 4)
+        self.instrdict[0xaa] = instr("xor d", 0,instrimpl.xord, 4)
+        self.instrdict[0xab] = instr("xor e", 0,instrimpl.xore, 4)
+        self.instrdict[0xac] = instr("xor h", 0,instrimpl.xorh, 4)
+        self.instrdict[0xad] = instr("xor l", 0,instrimpl.xorl, 4)
+        self.instrdict[0xae] = instr("xor (hl)", 0,instrimpl.xorhl, 8)
+        self.instrdict[0xee] = instr("xor %02x", 1,instrimpl.xorn, 8)
                 
         # ld nn,n
         self.instrdict[0x06] = instr("ld B,%02x", 1,instrimpl.ldbn, 8)
@@ -520,7 +548,11 @@ class emulator():
         # ld (c),a
         self.instrdict[0xe2] = instr("ld ($FF00+c),a", 0,instrimpl.ldff00ca, 8)
         
-        # inc
+        # ld r1,r2
+        self.instrdict[0x5e] = instr("ld e,(hl)", 0,instrimpl.ldehl, 8)
+        self.instrdict[0x56] = instr("ld d,(hl)", 0,instrimpl.lddhl, 8)
+        
+        # inc n
         self.instrdict[0x3c] = instr("inc a", 0,instrimpl.inca, 4)
         self.instrdict[0x04] = instr("inc b", 0,instrimpl.incb, 4)
         self.instrdict[0x0c] = instr("inc c", 0,instrimpl.incc, 4)
@@ -529,6 +561,12 @@ class emulator():
         self.instrdict[0x24] = instr("inc h", 0,instrimpl.inch, 4)
         self.instrdict[0x2c] = instr("inc l", 0,instrimpl.incl, 4)
         self.instrdict[0x34] = instr("inc (hl)", 0,instrimpl.inchl, 12)
+        
+        # inc nn
+        self.instrdict[0x03] = instr("inc bc", 0,instrimpl.incbc, 8)
+        self.instrdict[0x13] = instr("inc de", 0,instrimpl.incde, 8)
+        self.instrdict[0x23] = instr("inc hl", 0,instrimpl.inchl16, 8)
+        self.instrdict[0x33] = instr("inc sp", 0,instrimpl.incsp, 8)
         
         # call
         self.instrdict[0xcd] = instr("call %04x", 2,instrimpl.call, 12)
@@ -585,9 +623,46 @@ class emulator():
         # rrca
         self.instrdict[0x0f] = instr("rrca", 0,instrimpl.rrca, 4)
         
+        # swap
+        self.instrdict[0xcb37] = instr("swap a", 0,instrimpl.swapa, 8)
+        
+        # rst 
+        self.instrdict[0xc7] = instr("rst $00", 0,instrimpl.rst00, 32)
+        self.instrdict[0xcf] = instr("rst $08", 0,instrimpl.rst08, 32)
+        self.instrdict[0xd7] = instr("rst $10", 0,instrimpl.rst10, 32)
+        self.instrdict[0xdf] = instr("rst $18", 0,instrimpl.rst18, 32)
+        self.instrdict[0xe7] = instr("rst $20", 0,instrimpl.rst20, 32)
+        self.instrdict[0xef] = instr("rst $28", 0,instrimpl.rst28, 32)
+        self.instrdict[0xf7] = instr("rst $30", 0,instrimpl.rst30, 32)
+        self.instrdict[0xff] = instr("rst $38", 0,instrimpl.rst38, 32)
+        
+        # add
+        self.instrdict[0x87] = instr("add a,a", 0,instrimpl.adda, 4)
+        self.instrdict[0x80] = instr("add a,b", 0,instrimpl.addb, 4)
+        self.instrdict[0x81] = instr("add a,c", 0,instrimpl.addc, 4)
+        self.instrdict[0x82] = instr("add a,d", 0,instrimpl.addd, 4)
+        self.instrdict[0x83] = instr("add a,e", 0,instrimpl.adde, 4)
+        self.instrdict[0x84] = instr("add a,h", 0,instrimpl.addh, 4)
+        self.instrdict[0x85] = instr("add a,l", 0,instrimpl.addl, 4)
+        self.instrdict[0x86] = instr("add a,(hl)", 0,instrimpl.addhl, 8)
+        self.instrdict[0xc6] = instr("add a,%02x", 1,instrimpl.addn, 8)
+        
+        # add hl,n
+        self.instrdict[0x09] = instr("add hl,bc", 0,instrimpl.addhlbc, 8)
+        self.instrdict[0x19] = instr("add hl,de", 0,instrimpl.addhlde, 8)
+        self.instrdict[0x29] = instr("add hl,hl", 0,instrimpl.addhlhl, 8)
+        self.instrdict[0x39] = instr("add hl,sp", 0,instrimpl.addhlsp, 8)
+        
+        # jp (hl)
+        self.instrdict[0xe9] = instr("jp hl", 0,instrimpl.jphl, 4)
+        
+        # res
+        self.instrdict[0xcb87] = instr("res 0,a", 0,instrimpl.res0a, 8)
+        
+        
         print "Loaded %d of 244 instructions" % len(self.instrdict)
         
-
+    
     
         
 emu = emulator("tetris.gb")

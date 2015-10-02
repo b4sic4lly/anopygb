@@ -172,7 +172,43 @@ class instrimpl():
     
     @staticmethod
     def xora(emu, op):
-        emu.af.sethigh(emu.af.gethigh() ^ emu.af.gethigh())
+        instrimpl.xor(emu, emu.af.gethigh())
+    
+    @staticmethod
+    def xorb(emu, op):
+        instrimpl.xor(emu, emu.bc.gethigh())
+    
+    @staticmethod
+    def xorc(emu, op):
+        instrimpl.xor(emu, emu.bc.getlow())
+        
+    @staticmethod
+    def xord(emu, op):
+        instrimpl.xor(emu, emu.de.gethigh())
+        
+    @staticmethod
+    def xore(emu, op):
+        instrimpl.xor(emu, emu.de.getlow())
+        
+    @staticmethod
+    def xorh(emu, op):
+        instrimpl.xor(emu, emu.hl.gethigh())
+        
+    @staticmethod
+    def xorl(emu, op):
+        instrimpl.xor(emu, emu.hl.getlow())
+        
+    @staticmethod
+    def xorhl(emu, op):
+        instrimpl.xor(emu, emu.readbyte(emu.hl.get()))
+    
+    @staticmethod
+    def xorn(emu, op):
+        instrimpl.xor(emu, op)
+    
+    @staticmethod
+    def xor(emu, value):
+        emu.af.sethigh(value ^ emu.af.gethigh())
         
         if emu.af.gethigh() == 0:
             emu.setZero(True)
@@ -613,15 +649,151 @@ class instrimpl():
             emu.setZero(False)
         emu.af.sethigh(emu.af.gethigh() >> 1)
     
-
+    @staticmethod
+    def swapa(emu, op):
+        emu.af.sethigh(instrimpl.swapnibbles(emu.af.gethigh()))
     
+    @staticmethod
+    def swapnibbles(value):
+        return ((value & 0x0f) <<4) | (value & 0xf0)>>4
+
+    @staticmethod
+    def rst(emu, value):
+        emu.push2bytestack(emu.pc.get())
+        emu.pc.set(value)
         
+    @staticmethod
+    def rst00(emu, op):
+        instrimpl.rst(emu, 0)
+    
+    @staticmethod
+    def rst08(emu, op):
+        instrimpl.rst(emu, 0x08)
+                
+    @staticmethod
+    def rst10(emu, op):
+        instrimpl.rst(emu, 0x10)
+    
+    @staticmethod
+    def rst18(emu, op):
+        instrimpl.rst(emu, 0x18)
+    
+    @staticmethod
+    def rst20(emu, op):
+        instrimpl.rst(emu, 0x20)
+    
+    @staticmethod
+    def rst28(emu, op):
+        instrimpl.rst(emu, 0x28)
+    
+    @staticmethod
+    def rst30(emu, op):
+        instrimpl.rst(emu, 0x30)
         
+    @staticmethod
+    def rst38(emu, op):
+        instrimpl.rst(emu, 0x38)
         
+    @staticmethod
+    def add(emu, value):
+        emu.af.sethigh((emu.af.gethigh() + value) % 256 )
+    
+    @staticmethod
+    def adda(emu, op):
+        instrimpl.add(emu, emu.af.gethigh())
+    
+    @staticmethod
+    def addb(emu, op):
+        instrimpl.add(emu, emu.bc.gethigh())
         
+    @staticmethod
+    def addc(emu, op):
+        instrimpl.add(emu, emu.bc.getlow())
+    
+    @staticmethod
+    def addd(emu, op):
+        instrimpl.add(emu, emu.de.gethigh())
+    
+    @staticmethod
+    def adde(emu, op):
+        instrimpl.add(emu, emu.de.getlow())
+    
+    @staticmethod
+    def addh(emu, op):
+        instrimpl.add(emu, emu.hl.gethigh())
+    
+    @staticmethod
+    def addl(emu, op):
+        instrimpl.add(emu, emu.hl.getlow())
+    
+    @staticmethod
+    def addhl(emu, op):
+        instrimpl.add(emu, emu.readbyte(emu.hl.get()))
+    
+    @staticmethod
+    def addn(emu, op):
+        instrimpl.add(emu, op)
         
+    @staticmethod
+    def addhlbc(emu, op):
+        emu.hl.set((emu.hl.get() + emu.bc.get()) % 2**16)
+    
+    @staticmethod
+    def addhlde(emu, op):
+        emu.hl.set((emu.hl.get() + emu.de.get()) % 2**16)
         
+    @staticmethod
+    def addhlhl(emu, op):
+        emu.hl.set((emu.hl.get() + emu.hl.get()) % 2**16)
         
+    @staticmethod
+    def addhlsp(emu, op):
+        emu.hl.set((emu.hl.get() + emu.sp.get()) % 2**16)
+    
+    @staticmethod
+    def ldehl(emu, op):
+        emu.de.setlow(emu.readbyte(emu.hl.get()))
+    
+    @staticmethod
+    def lddhl(emu, op):
+        emu.de.sethigh(emu.readbyte(emu.hl.get()))
+                                     
+    @staticmethod
+    def incbc(emu, op):
+        emu.bc.set((emu.bc.get() + 1) % 2**16)
+    
+    @staticmethod
+    def incde(emu, op):
+        emu.de.set((emu.de.get() + 1) % 2**16)
+        
+    @staticmethod
+    def inchl16(emu, op):
+        emu.hl.set((emu.hl.get() + 1) % 2**16)
+        
+    @staticmethod
+    def incsp(emu, op):
+        emu.sp.set((emu.sp.get() + 1) % 2**16)
+    
+    @staticmethod
+    def jphl(emu, op):
+        emu.pc.set(emu.hl.get())
+        
+    @staticmethod
+    def res0a(emu, op):
+        emu.af.sethigh( emu.af.gethigh() & ~(1 << 0) )
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
         
         
     
