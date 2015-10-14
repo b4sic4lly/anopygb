@@ -10,7 +10,7 @@ import timeit
 
 import pygame
 print "Starting AnoPyGB..."
-
+import numpy
 
 
 
@@ -83,8 +83,8 @@ class emulator():
         self.running = False
         
         pygame.init()
-        screen = pygame.display.set_mode((160,144))
-        
+        self.screen = pygame.display.set_mode((160,144))
+        self.screen.fill((255,255,255))
         # copy cartridge to memory
         self.mem[0x0:0x8000] = self.loadrom(filename)
         
@@ -290,7 +290,7 @@ class emulator():
         print "Loaded %d of 244 instructions" % len(self.instrdict)
     
         print "memory:"
-        dump(self.mem, 0x2ac7, 0x2acf)
+        #dump(self.mem, 0x8000, 0x9fff)
     
     def intnext(self):
         if self.interruptmasterenable == True and self.getInterruptEnable() != 0 and self.getInterruptFlags() != 0:
@@ -350,6 +350,9 @@ class emulator():
                     # fire vblank interrupt
                     self.fireinterrupt(self.INT_VBLANK)
                     self.gpumode = self.GPU_VBLANK
+                else:
+                    pass
+                    #self.gpumode = self.GPU_OAM
                                 
                 self.gputicks -= 204
                 
@@ -364,16 +367,67 @@ class emulator():
                     self.gpumode = self.GPU_HBLANK
                 
                 self.gputicks -= 456
+        
+        elif self.gpumode == self.GPU_OAM:
+            if self.gputicks >= 80:
+                gpuMode = self.GPU_VRAM
+                self.gputicks -= 80
                 
+        elif self.gpumode == self.GPU_VRAM:
+            if self.gputicks >= 172:
+                self.gpumode = self.GPU_HBLANK
+                
+                # renderscanline
+                
+                self.gputicks -= 172
+        
         else:
             print "[ERROR] GPU-Mode No. %d not possible" % self.gpumode 
 
     def cpunext(self):
         instruction = self.readbyte(self.pc.get())
-        
-        if self.pc.get() == 0x2817:
+        # start graphic load 2817
+        if self.pc.get() == 0x282a:
             print "GRAPHIC BREAKPOINT"
-            self.realdebug = True
+            
+            # but first try to render stuff
+            # read a tile
+            tiledata = self.mem[0x8010:0x8020]
+            for byte in tiledata:
+                print hex(byte) + " ",
+            
+            print
+            
+            tiles = numpy.zeros((8,8))
+            
+            for i in range(0,8):
+                for j in range(0,8):
+                    bit = ((tiledata[i*2] >> j) & 1) + ((tiledata[(i*2)+1] >> j) & 1)
+                    tiles[j][i] = bit
+                    print bit, 
+                
+                print  
+            
+            #tiles = numpy.rot90(tiles)
+            
+            pixobj = pygame.PixelArray(self.screen)
+            for i in range(0,8):
+                for j in range(0,8):
+                    if tiles[i][j] > 0:
+                        pixobj[i][j] = (0,0,0)
+                        
+            pygame.display.update()
+            
+                
+            
+            
+                
+                
+            
+             
+            
+            #self.running = False
+            return
             
         
         
@@ -417,7 +471,7 @@ class emulator():
         
         # execute instruction
         self.instrdict[instruction].function(self, operand)
-        dumpinstruction(self, instruction, operand)
+        #dumpinstruction(self, instruction, operand)
     
         if self.realdebug == True:
             answer = raw_input("Realtime Debugging...[Enter] to continue, [e] for exit realtime debugging")

@@ -28,8 +28,7 @@ def dump(bram, start, end):
         
         counter+=1
         
-        if counter == 0x134:
-            print "WIR SIND DA " + byte
+        
             
     if rowstr != "":
         print rowstr
